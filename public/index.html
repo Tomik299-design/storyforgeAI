@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>StoryForge AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0d0d18;--sidebar:#11111f;--surface:#181828;--surface2:#1f1f35;--surface3:#26263e;
+  --border:rgba(255,255,255,.07);--border2:rgba(139,92,246,.35);
+  --purple:#7c3aed;--purple2:#8b5cf6;--purple3:#a78bfa;--purple-glow:rgba(124,58,237,.4);
+  --text:#f0eeff;--text2:#9b97b8;--text3:#55536a;
+  --gold:#f59e0b;--green:#059669;--red:#ef4444;
+  --r:10px;--r2:14px;--r3:20px;
+}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow:hidden;}
+h1,h2,h3{font-family:'Lora',serif;}
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:3px;}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:var(--r);font-family:'Plus Jakarta Sans',sans-serif;font-size:13.5px;font-weight:600;cursor:pointer;transition:all .2s;border:none;white-space:nowrap;}
+.btn-primary{background:var(--purple2);color:#fff;box-shadow:0 4px 16px var(--purple-glow);}
+.btn-primary:hover{background:var(--purple3);transform:translateY(-1px);box-shadow:0 6px 22px var(--purple-glow);}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+.btn-outline{background:transparent;color:var(--text2);border:1px solid var(--border2);}
+.btn-outline:hover{background:rgba(139,92,246,.1);color:var(--text);}
+.btn-ghost{background:transparent;color:var(--text2);border:none;}
+.btn-ghost:hover{color:var(--text);background:var(--surface2);}
+.btn-sm{padding:6px 13px;font-size:12.5px;}
+.btn-lg{padding:13px 28px;font-size:15px;}
+.btn-danger{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.2);}
+.btn-danger:hover{background:rgba(239,68,68,.25);}
+
+/* ── INPUTS ── */
+.input{width:100%;padding:11px 14px;border-radius:var(--r);background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:13.5px;transition:border-color .2s;outline:none;}
+.input:focus{border-color:var(--purple2);}
+.input::placeholder{color:var(--text3);}
+textarea.input{resize:vertical;min-height:72px;line-height:1.6;}
+select.input{cursor:pointer;}
+.label{display:block;font-size:12px;color:var(--text2);margin-bottom:6px;font-weight:600;}
+.input-wrap{position:relative;}
+.input-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;}
+.input-padded{padding-left:38px;}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:100px;font-size:11.5px;font-weight:600;}
+.badge-purple{background:rgba(124,58,237,.15);color:var(--purple3);}
+.badge-gold{background:rgba(245,158,11,.15);color:var(--gold);}
+.badge-green{background:rgba(5,150,105,.15);color:#34d399;}
+
+/* ── LAYOUT ── */
+#root{display:flex;height:100vh;overflow:hidden;}
+.page{display:none;flex:1;overflow:hidden;}
+.page.active{display:flex;}
+
+/* ── AUTH ── */
+#page-auth{flex-direction:row;}
+.auth-left{flex:1;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;padding:60px 48px;position:relative;overflow:hidden;}
+.auth-right{width:460px;flex-shrink:0;background:var(--sidebar);border-left:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px 44px;}
+.auth-orb{position:absolute;border-radius:50%;filter:blur(100px);pointer-events:none;}
+.auth-logo{display:flex;align-items:center;gap:10px;margin-bottom:52px;}
+.logo-icon{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--purple),#4c1d95);display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 4px 12px var(--purple-glow);}
+.logo-text{font-family:'Lora',serif;font-size:18px;font-weight:700;}
+.logo-text span{color:var(--purple3);}
+.auth-hero-title{font-size:48px;font-weight:700;line-height:1.15;margin-bottom:18px;max-width:500px;}
+.auth-hero-sub{font-size:15px;color:var(--text2);line-height:1.7;max-width:440px;margin-bottom:36px;}
+.auth-features{display:flex;flex-direction:column;gap:13px;}
+.auth-feat{display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--text2);}
+.auth-feat-icon{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.book-float{position:absolute;border-radius:10px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5);animation:float ease-in-out infinite;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.06);}
+@keyframes float{0%,100%{transform:translateY(0) rotate(var(--rot,0deg));}50%{transform:translateY(-12px) rotate(var(--rot,0deg));}}
+.auth-form-box{width:100%;max-width:320px;}
+.auth-form-title{font-size:26px;font-weight:700;margin-bottom:5px;text-align:center;}
+.auth-form-sub{font-size:13px;color:var(--text2);text-align:center;margin-bottom:28px;}
+.auth-social{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px;border-radius:var(--r);background:var(--surface2);border:1px solid var(--border);color:var(--text2);font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;margin-bottom:8px;}
+.auth-social:hover{border-color:var(--border2);color:var(--text);}
+.auth-divider{display:flex;align-items:center;gap:10px;margin:12px 0;}
+.auth-divider-line{flex:1;height:1px;background:var(--border);}
+.auth-divider-txt{font-size:11px;color:var(--text3);}
+.auth-form{display:flex;flex-direction:column;gap:12px;}
+.auth-error{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:var(--r);padding:9px 13px;font-size:12.5px;color:#fca5a5;display:none;}
+.auth-error.show{display:block;}
+.auth-switch{text-align:center;font-size:12.5px;color:var(--text2);margin-top:14px;}
+.auth-switch a{color:var(--purple3);cursor:pointer;font-weight:600;text-decoration:none;}
+.auth-switch a:hover{text-decoration:underline;}
+.auth-forgot{text-align:right;font-size:12px;color:var(--purple3);cursor:pointer;margin-top:-6px;}
+.auth-terms{text-align:center;margin-top:22px;font-size:11px;color:var(--text3);line-height:1.6;}
+.auth-terms a{color:var(--purple3);text-decoration:none;}
+
+/* ── APP LAYOUT ── */
+#page-app{flex-direction:row;}
+.sidebar{width:220px;flex-shrink:0;background:var(--sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.sidebar-logo{padding:20px 18px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);}
+.sidebar-nav{flex:1;padding:10px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;}
+.nav-section{font-size:10px;font-weight:600;letter-spacing:.1em;color:var(--text3);padding:10px 8px 5px;text-transform:uppercase;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--text2);font-weight:500;transition:all .15s;border:1px solid transparent;}
+.nav-item:hover{background:var(--surface2);color:var(--text);}
+.nav-item.active{background:rgba(124,58,237,.18);color:var(--purple3);border-color:rgba(124,58,237,.2);}
+.nav-item svg{width:15px;height:15px;flex-shrink:0;}
+.nav-book-thumb{width:26px;height:26px;border-radius:4px;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;}
+.nav-book-title{font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;}
+.nav-book-genre{font-size:10.5px;color:var(--text3);}
+.sidebar-upgrade{margin:10px;border-radius:var(--r2);background:linear-gradient(135deg,rgba(124,58,237,.22),rgba(76,29,149,.28));border:1px solid rgba(124,58,237,.28);padding:13px;}
+.sidebar-upgrade h4{font-size:12.5px;font-weight:600;margin-bottom:4px;}
+.sidebar-upgrade p{font-size:11px;color:var(--text2);margin-bottom:9px;line-height:1.5;}
+.sidebar-user{padding:11px 14px;border-top:1px solid var(--border);display:flex;align-items:center;gap:9px;cursor:pointer;transition:background .15s;}
+.sidebar-user:hover{background:var(--surface2);}
+.user-avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--purple),#4c1d95);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;}
+.user-name{font-size:12.5px;font-weight:600;}
+.user-email{font-size:10.5px;color:var(--text3);}
+
+/* ── MAIN PANEL ── */
+.main-panel{flex:1;overflow-y:auto;display:flex;flex-direction:column;}
+.topbar{padding:18px 28px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:var(--sidebar);position:sticky;top:0;z-index:30;gap:12px;}
+.topbar h2{font-size:20px;font-weight:700;line-height:1.2;}
+.topbar p{font-size:12.5px;color:var(--text2);margin-top:1px;}
+.content{padding:24px 28px;flex:1;}
+
+/* ── SCREEN SECTIONS ── */
+.screen{display:none;}
+.screen.active{display:block;}
+
+/* ── CARDS ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);}
+.action-card{padding:20px;cursor:pointer;transition:all .2s;}
+.action-card:hover{border-color:var(--border2);transform:translateY(-2px);background:var(--surface2);}
+.action-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:19px;margin-bottom:12px;}
+.action-card h3{font-family:'Plus Jakarta Sans',sans-serif;font-size:14.5px;font-weight:600;margin-bottom:5px;}
+.action-card p{font-size:12px;color:var(--text2);line-height:1.55;margin-bottom:14px;}
+.action-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px;}
+.dash-grid{display:grid;grid-template-columns:1fr 250px;gap:22px;}
+.books-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:18px;}
+.panel h4{font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:700;margin-bottom:14px;}
+.quote-box{background:var(--surface2);border-radius:var(--r);padding:13px;font-size:12.5px;line-height:1.65;color:var(--text2);font-style:italic;}
+.quote-author{font-size:11.5px;color:var(--purple3);margin-top:7px;font-style:normal;font-weight:600;}
+.inspire-banner{background:linear-gradient(135deg,rgba(124,58,237,.12),rgba(76,29,149,.08));border:1px solid rgba(124,58,237,.18);border-radius:var(--r2);padding:18px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:20px;}
+
+/* ── BOOK CARDS ── */
+.book-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;cursor:pointer;transition:all .25s;position:relative;}
+.book-card:hover{border-color:var(--border2);transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,.4);}
+.book-cover{height:150px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+.book-cover-emoji{font-size:36px;position:relative;z-index:1;}
+.book-cover-overlay{position:absolute;inset:0;background:radial-gradient(ellipse at 30% 30%,rgba(139,92,246,.25) 0%,transparent 65%);}
+.book-cover-gradient{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.75) 0%,transparent 50%);}
+.book-genre-badge{position:absolute;top:9px;left:9px;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.1);border-radius:100px;padding:3px 9px;font-size:10.5px;font-weight:600;color:var(--purple3);}
+.book-del-btn{position:absolute;top:7px;right:7px;background:rgba(0,0,0,.6);border:none;color:rgba(255,255,255,.4);cursor:pointer;border-radius:6px;width:26px;height:26px;font-size:12px;display:flex;align-items:center;justify-content:center;transition:all .2s;opacity:0;}
+.book-card:hover .book-del-btn{opacity:1;}
+.book-del-btn:hover{color:var(--red);background:rgba(0,0,0,.8);}
+.book-body{padding:12px 14px 14px;}
+.book-title{font-size:13.5px;font-weight:700;margin-bottom:3px;line-height:1.35;}
+.book-meta{font-size:11.5px;color:var(--text3);margin-bottom:9px;}
+.progress-row{display:flex;align-items:center;gap:7px;}
+.progress-bar{flex:1;height:3.5px;background:var(--surface3);border-radius:100px;overflow:hidden;}
+.progress-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--purple2),var(--purple3));transition:width .5s;}
+.progress-label{font-size:11px;color:var(--text2);font-weight:600;}
+
+/* ── WIZARD ── */
+.wizard-wrap{max-width:660px;margin:0 auto;padding:4px 0 40px;}
+.step-bar{display:flex;gap:4px;margin-bottom:28px;}
+.step-seg{flex:1;height:3px;border-radius:2px;transition:background .3s;background:var(--surface3);}
+.step-seg.done{background:var(--purple2);}
+.genre-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;}
+.genre-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:13px 10px;cursor:pointer;transition:all .2s;text-align:center;}
+.genre-card:hover,.genre-card.sel{border-color:var(--purple2);}
+.genre-card.sel{background:rgba(124,58,237,.18);}
+.genre-card .gi{font-size:24px;margin-bottom:5px;}
+.genre-card .gn{font-size:12px;font-weight:600;}
+.genre-card .gd{font-size:10.5px;color:var(--text3);margin-top:2px;}
+.style-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+.style-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;cursor:pointer;transition:all .2s;}
+.style-card:hover,.style-card.sel{border-color:var(--purple2);}
+.style-card.sel{background:rgba(124,58,237,.18);}
+.style-card .sn{font-size:13px;font-weight:600;margin-bottom:3px;}
+.style-card.sel .sn{color:var(--purple3);}
+.style-card .sd{font-size:11.5px;color:var(--text3);}
+.char-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:16px;margin-bottom:12px;}
+.length-opt{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:13px 16px;cursor:pointer;transition:all .2s;display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;}
+.length-opt:hover,.length-opt.sel{border-color:var(--purple2);}
+.length-opt.sel{background:rgba(124,58,237,.18);}
+.step-nav{display:flex;justify-content:flex-end;gap:9px;margin-top:24px;}
+
+/* ── GENERATION ── */
+.gen-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:65vh;text-align:center;padding:40px;}
+.gen-phases{display:flex;gap:0;margin:24px 0;width:100%;max-width:500px;}
+.gen-phase{flex:1;display:flex;flex-direction:column;align-items:center;position:relative;}
+.gen-phase:not(:last-child)::after{content:'';position:absolute;top:13px;left:50%;width:100%;height:2px;background:var(--border);}
+.gen-phase.done::after{background:var(--purple2);}
+.gen-dot{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;position:relative;z-index:1;border:2px solid var(--border);background:var(--surface2);color:var(--text3);transition:all .3s;}
+.gen-phase.done .gen-dot{background:var(--purple2);border-color:var(--purple2);color:#fff;}
+.gen-phase.active .gen-dot{border-color:var(--purple2);color:var(--purple2);background:rgba(124,58,237,.15);}
+.gen-label{font-size:10px;color:var(--text3);margin-top:6px;max-width:68px;text-align:center;line-height:1.3;}
+.gen-phase.done .gen-label{color:var(--text2);}
+.gen-phase.active .gen-label{color:var(--purple3);}
+.gen-log{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:14px;text-align:left;max-height:170px;overflow-y:auto;width:100%;max-width:460px;margin-top:8px;}
+.gen-log-line{font-size:12px;color:var(--text2);padding:2px 0;line-height:1.5;}
+.pbar{background:var(--surface2);border-radius:100px;height:5px;overflow:hidden;width:100%;max-width:460px;}
+.pfill{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--purple2),var(--purple3));transition:width .5s;}
+
+/* ── BOOK VIEW ── */
+.book-view-wrap{max-width:740px;margin:0 auto;padding:0 0 40px;}
+.book-hero{border-radius:var(--r3);overflow:hidden;margin-bottom:24px;background:var(--surface);border:1px solid var(--border);padding:28px;display:flex;gap:24px;align-items:flex-start;}
+.book-hero-cover{width:100px;height:140px;border-radius:9px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:40px;box-shadow:0 10px 32px rgba(0,0,0,.5);}
+.chapter-block{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:22px;margin-bottom:14px;}
+.chapter-title{font-size:19px;margin-bottom:14px;}
+.chapter-body{font-size:15px;line-height:1.9;color:var(--text2);white-space:pre-wrap;}
+
+/* ── BOOK TABS ── */
+.book-tabs{display:flex;gap:6px;}
+
+/* ── CHAT ── */
+.chat-outer{display:flex;flex-direction:column;height:calc(100vh - 175px);background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;}
+.chat-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.chat-messages{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;}
+.msg-user{align-self:flex-end;max-width:80%;background:rgba(124,58,237,.2);border:1px solid rgba(124,58,237,.3);border-radius:14px 14px 3px 14px;padding:9px 13px;font-size:13px;line-height:1.6;}
+.msg-ai{align-self:flex-start;max-width:85%;background:var(--surface2);border:1px solid var(--border);border-radius:14px 14px 14px 3px;padding:9px 13px;font-size:13px;line-height:1.6;white-space:pre-wrap;}
+.chat-input-row{padding:12px 14px;border-top:1px solid var(--border);display:flex;gap:8px;}
+.chat-suggestion{display:inline-flex;margin:3px;padding:5px 11px;border-radius:100px;font-size:12px;font-weight:600;background:rgba(124,58,237,.12);color:var(--purple3);border:1px solid rgba(124,58,237,.2);cursor:pointer;transition:all .15s;}
+.chat-suggestion:hover{background:rgba(124,58,237,.22);}
+.chat-empty{text-align:center;padding:36px 20px;}
+
+/* ── OUTLINE ── */
+.outline-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:13px 16px;display:flex;gap:13px;align-items:flex-start;margin-bottom:8px;}
+.outline-num{width:30px;height:30px;border-radius:50%;background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.25);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--purple3);font-weight:700;flex-shrink:0;}
+
+/* ── LIBRARY ── */
+.lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px;}
+
+/* ── ANIMATIONS ── */
+.spinner{width:17px;height:17px;border:2px solid rgba(139,92,246,.25);border-top-color:var(--purple2);border-radius:50%;animation:spin .7s linear infinite;display:inline-block;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.pulse{animation:pulse 1.8s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+.fade-in{animation:fi .3s ease;}
+@keyframes fi{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.toast{position:fixed;top:20px;right:20px;z-index:999;padding:11px 18px;border-radius:10px;font-size:13.5px;font-weight:500;max-width:320px;line-height:1.5;box-shadow:0 8px 32px rgba(0,0,0,.4);animation:fi .3s ease;display:none;}
+.toast.show{display:block;}
+.toast.ok{background:rgba(16,185,129,.18);border:1px solid rgba(16,185,129,.38);color:var(--text);}
+.toast.err{background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.38);color:var(--text);}
+.toast.info{background:var(--surface2);border:1px solid var(--border2);color:var(--text);}
+</style>
+</head>
+<body>
+<div id="root">
+
+<!-- ══════════════════════════════════ AUTH ══════════════════════════════════ -->
+<div id="page-auth" class="page active">
+  <div class="auth-left">
+    <div class="auth-orb" style="width:480px;height:480px;background:rgba(124,58,237,.1);top:50%;left:42%;transform:translate(-50%,-50%);"></div>
+    <div class="auth-orb" style="width:260px;height:260px;background:rgba(76,29,149,.08);top:8%;left:2%;"></div>
+    <!-- floating books -->
+    <div class="book-float" style="top:10%;left:6%;width:85px;height:120px;background:linear-gradient(160deg,#0d1b4e,#3b0a6b);--rot:-8deg;animation-duration:6s;animation-delay:0s;">⚔️</div>
+    <div class="book-float" style="top:56%;left:2%;width:72px;height:100px;background:linear-gradient(160deg,#4a0a2e,#1a0a18);--rot:5deg;animation-duration:7s;animation-delay:1.5s;">💞</div>
+    <div class="book-float" style="top:22%;left:70%;width:78px;height:108px;background:linear-gradient(160deg,#0a1a3e,#003366);--rot:10deg;animation-duration:5.5s;animation-delay:.8s;">🚀</div>
+    <div class="book-float" style="top:66%;left:62%;width:66px;height:92px;background:linear-gradient(160deg,#0a0a0a,#2a0a0a);--rot:-6deg;animation-duration:6.5s;animation-delay:2s;">👻</div>
+    <div class="book-float" style="top:80%;left:26%;width:60px;height:84px;background:linear-gradient(160deg,#0a2e0a,#0a1a06);--rot:12deg;animation-duration:8s;animation-delay:.4s;">🗺️</div>
+
+    <div class="auth-logo">
+      <div class="logo-icon">📚</div>
+      <div class="logo-text">StoryForge <span>AI</span></div>
+    </div>
+    <h1 class="auth-hero-title">Každý má <em style="color:var(--purple3)">příběh</em>,<br/>který stojí za vyprávění.</h1>
+    <p class="auth-hero-sub">AI platforma, která promění tvůj nápad v kompletní román. Žádné psaní — stačí představivost.</p>
+    <div class="auth-features">
+      <div class="auth-feat"><div class="auth-feat-icon" style="background:rgba(124,58,237,.2)">✍️</div>Kompletní knihy generované AI v minutách</div>
+      <div class="auth-feat"><div class="auth-feat-icon" style="background:rgba(13,148,136,.2)">🎭</div>Konzistentní postavy a světy přes celý román</div>
+      <div class="auth-feat"><div class="auth-feat-icon" style="background:rgba(245,158,11,.15)">✨</div>AI spisovatel asistent pro úpravy a rozšíření</div>
+      <div class="auth-feat"><div class="auth-feat-icon" style="background:rgba(5,150,105,.2)">📤</div>Export do TXT, HTML a dalších formátů</div>
+    </div>
+  </div>
+
+  <div class="auth-right">
+    <div class="auth-form-box">
+      <h2 class="auth-form-title" id="auth-title">Vítej zpět 👋</h2>
+      <p class="auth-form-sub" id="auth-sub">Přihlas se a pokračuj ve svém příběhu</p>
+
+      <button class="auth-social" onclick="quickLogin('google')">
+        <svg width="17" height="17" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Pokračovat s Google
+      </button>
+      <button class="auth-social" onclick="quickLogin('github')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="var(--text2)"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+        Pokračovat s GitHub
+      </button>
+
+      <div class="auth-divider"><div class="auth-divider-line"></div><span class="auth-divider-txt">nebo e-mailem</span><div class="auth-divider-line"></div></div>
+
+      <div class="auth-form">
+        <div id="auth-name-wrap" style="display:none">
+          <label class="label">Celé jméno</label>
+          <div class="input-wrap"><span class="input-icon">👤</span><input class="input input-padded" id="auth-name" placeholder="Tvoje jméno" type="text"/></div>
+        </div>
+        <div>
+          <label class="label">E-mailová adresa</label>
+          <div class="input-wrap"><span class="input-icon">✉️</span><input class="input input-padded" id="auth-email" placeholder="e-mail@priklad.cz" type="email"/></div>
+        </div>
+        <div>
+          <label class="label">Heslo</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔒</span>
+            <input class="input input-padded" id="auth-password" placeholder="Heslo" type="password" style="padding-right:38px"/>
+            <span onclick="togglePw()" id="pw-toggle" style="position:absolute;right:11px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:13px;color:var(--text3);">👁️</span>
+          </div>
+        </div>
+        <div id="auth-forgot" class="auth-forgot" onclick="toast('Reset hesla – brzy dostupné','info')">Zapomenuté heslo?</div>
+        <div class="auth-error" id="auth-error"></div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;padding:13px;font-size:14.5px;" id="auth-submit-btn" onclick="authSubmit()">Přihlásit se →</button>
+        <button class="btn btn-outline" style="width:100%;justify-content:center;font-size:13px;" id="auth-demo-btn" onclick="quickLogin('demo')">🎭 Vyzkoušet demo bez účtu</button>
+      </div>
+
+      <div class="auth-switch" id="auth-switch">
+        Ještě nemáš účet? <a onclick="switchAuthMode()">Zaregistruj se</a>
+      </div>
+      <div class="auth-terms">
+        Registrací souhlasíš s <a href="#">Podmínkami</a> a <a href="#">Zásadami soukromí</a>.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ APP ══════════════════════════════════ -->
+<div id="page-app" class="page">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">📚</div>
+      <div class="logo-text">StoryForge <span>AI</span></div>
+    </div>
+    <div class="sidebar-nav" id="sidebar-nav">
+      <div class="nav-item active" onclick="showScreen('dashboard')" data-screen="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>Dashboard
+      </div>
+      <div class="nav-item" onclick="showScreen('library')" data-screen="library">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>Moje knihy
+      </div>
+      <div class="nav-item" onclick="showScreen('wizard');resetWizard();" data-screen="wizard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Nová kniha
+      </div>
+      <div class="nav-item" onclick="toast('Brzy dostupné 🚀','info')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Šablony
+      </div>
+      <div class="nav-item" onclick="toast('Brzy dostupné 🚀','info')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>Oblíbené
+      </div>
+      <div class="nav-section">Nedávno otevřené</div>
+      <div id="nav-recent"></div>
+    </div>
+    <div class="sidebar-upgrade">
+      <h4>Upgrade na PRO</h4>
+      <p>Neomezené knihy, delší kapitoly a žádné limity.</p>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;font-size:12.5px;padding:8px;" onclick="toast('Brzy dostupné 🚀','info')">Upgradovat</button>
+    </div>
+    <div class="sidebar-user" onclick="logout()">
+      <div class="user-avatar" id="user-avatar">T</div>
+      <div style="flex:1;min-width:0">
+        <div class="user-name" id="user-name-label">Uživatel</div>
+        <div class="user-email" id="user-email-label">email</div>
+      </div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+  </div>
+
+  <!-- MAIN PANEL -->
+  <div class="main-panel" id="main-panel">
+
+    <!-- ── DASHBOARD ── -->
+    <div class="screen active" id="screen-dashboard">
+      <div class="topbar">
+        <div><h2 id="dash-greeting">Vítej zpět! 👋</h2><p>Co dnes vytvoříme?</p></div>
+        <button class="btn btn-primary" onclick="showScreen('wizard');resetWizard();">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>Nová kniha
+        </button>
+      </div>
+      <div class="content">
+        <div class="action-grid">
+          <div class="card action-card" onclick="showScreen('wizard');resetWizard();" style="border-color:rgba(124,58,237,.25)">
+            <div class="action-icon" style="background:rgba(124,58,237,.22)">🖊️</div>
+            <h3>Vytvoř novou knihu</h3>
+            <p>Nech AI vygenerovat jedinečný příběh podle tvých představ.</p>
+            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();showScreen('wizard');resetWizard();">Začít psát ✨</button>
+          </div>
+          <div class="card action-card" onclick="showScreen('library')">
+            <div class="action-icon" style="background:rgba(13,148,136,.18)">📂</div>
+            <h3>Pokračuj v psaní</h3>
+            <p>Otevři rozepsanou knihu a pokračuj tam, kde jsi skončil/a.</p>
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();showScreen('library')">Zobrazit knihy</button>
+          </div>
+          <div class="card action-card" onclick="toast('Brzy dostupné','info')">
+            <div class="action-icon" style="background:rgba(5,150,105,.18)">📚</div>
+            <h3>Knihovna šablon</h3>
+            <p>Použij některou z našich šablon a nech se inspirovat.</p>
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();toast('Brzy dostupné','info')">Prozkoumat</button>
+          </div>
+        </div>
+
+        <div class="dash-grid">
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+              <h3 style="font-size:16px">Moje knihy</h3>
+              <span style="font-size:12.5px;color:var(--purple3);cursor:pointer;font-weight:600;" onclick="showScreen('library')">Zobrazit vše</span>
+            </div>
+            <div class="books-grid" id="dash-books-grid"></div>
+            <div id="dash-empty" style="display:none">
+              <div class="card" style="padding:36px;text-align:center;">
+                <div style="font-size:40px;margin-bottom:12px">📚</div>
+                <p style="color:var(--text2);font-size:13.5px;margin-bottom:14px">Zatím žádné knihy. Vytvoř svůj první příběh!</p>
+                <button class="btn btn-primary btn-sm" onclick="showScreen('wizard');resetWizard();">Vytvořit knihu</button>
+              </div>
+            </div>
+            <div class="inspire-banner">
+              <div>
+                <h3 style="font-size:15px;margin-bottom:3px">Potřebuješ inspiraci?</h3>
+                <p style="font-size:12.5px;color:var(--text2)">Vygeneruj náhodný nápad na příběh pomocí AI.</p>
+              </div>
+              <button class="btn btn-primary" onclick="generateIdea()">Vygenerovat nápad 🎲</button>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:16px;">
+            <div class="panel">
+              <h4>Dnešní pokrok</h4>
+              <div style="display:flex;flex-direction:column;align-items:center;padding:8px 0 12px;">
+                <svg width="110" height="110" viewBox="0 0 110 110">
+                  <circle cx="55" cy="55" r="42" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="8"/>
+                  <circle cx="55" cy="55" r="42" fill="none" stroke="var(--purple2)" stroke-width="8" id="progress-circle" stroke-dasharray="0 264" stroke-linecap="round" transform="rotate(-90 55 55)" style="transition:stroke-dasharray .6s ease"/>
+                  <text x="55" y="51" text-anchor="middle" fill="var(--text)" font-size="17" font-family="Lora,serif" font-weight="700" id="progress-words">0</text>
+                  <text x="55" y="65" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="Plus Jakarta Sans,sans-serif">slov</text>
+                </svg>
+                <div style="font-size:11.5px;color:var(--text2);margin-top:4px">Cíl: 2 000 slov</div>
+              </div>
+              <button class="btn btn-primary" style="width:100%;justify-content:center;font-size:13px;" onclick="continueReading()">Pokračuj v psaní</button>
+            </div>
+            <div class="panel">
+              <h4>Tip dne</h4>
+              <div class="quote-box" id="quote-box"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── LIBRARY ── -->
+    <div class="screen" id="screen-library">
+      <div class="topbar">
+        <div><h2>Moje knihy</h2><p id="lib-count">0 knih</p></div>
+        <button class="btn btn-primary" onclick="showScreen('wizard');resetWizard();">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>Nová kniha
+        </button>
+      </div>
+      <div class="content">
+        <div class="lib-grid" id="lib-grid"></div>
+        <div id="lib-empty" style="display:none;text-align:center;padding:80px 20px;">
+          <div style="font-size:54px;margin-bottom:18px">📚</div>
+          <h2 style="font-size:22px;margin-bottom:8px">Knihovna je prázdná</h2>
+          <p style="color:var(--text2);margin-bottom:24px">Vytvoř svoji první knihu a začni svůj příběh</p>
+          <button class="btn btn-primary btn-lg" onclick="showScreen('wizard');resetWizard();">✨ Vytvořit knihu</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── WIZARD ── -->
+    <div class="screen" id="screen-wizard">
+      <div class="topbar">
+        <div style="display:flex;align-items:center;gap:10px;flex:1">
+          <button class="btn btn-ghost btn-sm" onclick="showScreen('dashboard')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>Zpět
+          </button>
+          <div><h2 style="font-size:18px">Nová kniha</h2><p id="wiz-step-label">Krok 1 z 5</p></div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="wizard-wrap">
+          <div class="step-bar" id="step-bar">
+            <div class="step-seg done" id="seg1"></div>
+            <div class="step-seg" id="seg2"></div>
+            <div class="step-seg" id="seg3"></div>
+            <div class="step-seg" id="seg4"></div>
+            <div class="step-seg" id="seg5"></div>
+          </div>
+          <!-- STEP 1: Genre -->
+          <div id="wiz1" class="fade-in">
+            <h2 style="margin-bottom:5px;font-size:21px">Vyber žánr</h2>
+            <p style="color:var(--text2);margin-bottom:20px;font-size:13px">Jaký typ příběhu chceš napsat?</p>
+            <div class="genre-grid" id="genre-grid"></div>
+            <div class="step-nav"><button class="btn btn-primary" onclick="wizNext(2)" id="wiz1-next" disabled>Pokračovat →</button></div>
+          </div>
+          <!-- STEP 2: Story -->
+          <div id="wiz2" style="display:none" class="fade-in">
+            <h2 style="margin-bottom:5px;font-size:21px">Definuj příběh</h2>
+            <p style="color:var(--text2);margin-bottom:20px;font-size:13px">Základní parametry tvé knihy</p>
+            <div style="display:grid;gap:14px;">
+              <div><label class="label">Název knihy</label><input class="input" id="w-title" placeholder="Název tvé knihy..."/></div>
+              <div><label class="label">Téma *</label><input class="input" id="w-theme" placeholder="Ztracený princ hledá svůj trůn..."/></div>
+              <div><label class="label">Prostředí</label><input class="input" id="w-setting" placeholder="Magický svět, moderní město, vesmír..."/></div>
+            </div>
+            <div class="step-nav">
+              <button class="btn btn-outline" onclick="wizBack(1)">← Zpět</button>
+              <button class="btn btn-primary" onclick="wizNext(3)">Pokračovat →</button>
+            </div>
+          </div>
+          <!-- STEP 3: Characters -->
+          <div id="wiz3" style="display:none" class="fade-in">
+            <h2 style="margin-bottom:5px;font-size:21px">Postavy</h2>
+            <p style="color:var(--text2);margin-bottom:20px;font-size:13px">Kdo bude v tvém příběhu?</p>
+            <div id="chars-container"></div>
+            <button class="btn btn-outline btn-sm" onclick="addChar()" style="margin-bottom:8px">+ Přidat postavu</button>
+            <div class="step-nav">
+              <button class="btn btn-outline" onclick="wizBack(2)">← Zpět</button>
+              <button class="btn btn-primary" onclick="wizNext(4)">Pokračovat →</button>
+            </div>
+          </div>
+          <!-- STEP 4: Length -->
+          <div id="wiz4" style="display:none" class="fade-in">
+            <h2 style="margin-bottom:5px;font-size:21px">Délka knihy</h2>
+            <p style="color:var(--text2);margin-bottom:20px;font-size:13px">Jak dlouhý bude příběh?</p>
+            <div id="length-opts"></div>
+            <div class="step-nav">
+              <button class="btn btn-outline" onclick="wizBack(3)">← Zpět</button>
+              <button class="btn btn-primary" onclick="wizNext(5)">Pokračovat →</button>
+            </div>
+          </div>
+          <!-- STEP 5: Style + Summary -->
+          <div id="wiz5" style="display:none" class="fade-in">
+            <h2 style="margin-bottom:5px;font-size:21px">Styl psaní</h2>
+            <p style="color:var(--text2);margin-bottom:20px;font-size:13px">Jakou atmosféru má příběh mít?</p>
+            <div class="style-grid" id="style-grid"></div>
+            <div class="card" style="padding:14px 16px;background:rgba(124,58,237,.07);border-color:rgba(124,58,237,.18);margin-top:18px;" id="wiz-summary"></div>
+            <div class="step-nav">
+              <button class="btn btn-outline" onclick="wizBack(4)">← Zpět</button>
+              <button class="btn btn-primary btn-lg" onclick="startGeneration()">✨ Vygenerovat knihu</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── GENERATION ── -->
+    <div class="screen" id="screen-generating">
+      <div class="topbar"><div><h2>Generuji knihu</h2><p>AI pracuje na tvém příběhu...</p></div></div>
+      <div class="content">
+        <div class="gen-wrap">
+          <div style="font-size:52px;margin-bottom:14px">✍️</div>
+          <h2 style="font-size:22px;margin-bottom:7px">Vytváří se tvůj příběh</h2>
+          <p style="color:var(--text2);margin-bottom:24px;font-size:13.5px">AI píše každou kapitolu s plným kontextem celého díla</p>
+          <div class="pbar" style="margin-bottom:7px"><div class="pfill" id="gen-pfill" style="width:0%"></div></div>
+          <div style="font-size:12.5px;color:var(--text3);margin-bottom:22px" id="gen-pct">0% dokončeno</div>
+          <div class="gen-phases" id="gen-phases"></div>
+          <div class="gen-log" id="gen-log"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── BOOK VIEW ── -->
+    <div class="screen" id="screen-book">
+      <div class="topbar" style="gap:10px">
+        <button class="btn btn-ghost btn-sm" onclick="showScreen('library')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>Zpět
+        </button>
+        <div style="flex:1;min-width:0">
+          <h2 style="font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="book-header-title">Kniha</h2>
+          <p id="book-header-sub" style="font-size:11.5px;color:var(--text3)"></p>
+        </div>
+        <div class="book-tabs">
+          <button class="btn btn-primary btn-sm" id="tab-read" onclick="switchBookTab('read')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>Číst
+          </button>
+          <button class="btn btn-outline btn-sm" id="tab-outline" onclick="switchBookTab('outline')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Osnova
+          </button>
+          <button class="btn btn-outline btn-sm" id="tab-chat" onclick="switchBookTab('chat')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>AI Chat
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="exportCurrentBook()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export
+          </button>
+        </div>
+      </div>
+      <div class="content">
+        <!-- READ -->
+        <div id="book-tab-read" class="book-view-wrap fade-in">
+          <div class="book-hero" id="book-hero"></div>
+          <div id="book-chapters"></div>
+        </div>
+        <!-- OUTLINE -->
+        <div id="book-tab-outline" class="book-view-wrap fade-in" style="display:none">
+          <h2 style="font-size:21px;margin-bottom:18px">Osnova příběhu</h2>
+          <div id="outline-bible" class="card" style="padding:18px;margin-bottom:18px;display:none"></div>
+          <div id="outline-list"></div>
+        </div>
+        <!-- CHAT -->
+        <div id="book-tab-chat" style="display:none" class="fade-in">
+          <div class="chat-outer">
+            <div class="chat-header">
+              <div style="width:30px;height:30px;border-radius:50%;background:rgba(124,58,237,.2);display:flex;align-items:center;justify-content:center;font-size:15px">✨</div>
+              <div><div style="font-weight:600;font-size:13.5px">AI Spisovatel Asistent</div><div style="font-size:11px;color:var(--text3)">Uprav knihu přirozeným jazykem</div></div>
+            </div>
+            <div class="chat-messages" id="chat-messages">
+              <div class="chat-empty" id="chat-empty">
+                <div style="font-size:34px;margin-bottom:10px">💬</div>
+                <p style="color:var(--text2);font-size:13.5px;margin-bottom:12px">Napiš co chceš změnit nebo vylepšit</p>
+                <div>
+                  <span class="chat-suggestion" onclick="chatSuggest(this)">Přidej více romantiky</span>
+                  <span class="chat-suggestion" onclick="chatSuggest(this)">Udělej záporáka temnějším</span>
+                  <span class="chat-suggestion" onclick="chatSuggest(this)">Změň konec kapitoly</span>
+                  <span class="chat-suggestion" onclick="chatSuggest(this)">Vytvoř novou kapitolu</span>
+                </div>
+              </div>
+            </div>
+            <div class="chat-input-row">
+              <input class="input" id="chat-input" placeholder="Přidej romantiku, změň konec..." style="flex:1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"/>
+              <button class="btn btn-primary btn-sm" onclick="sendChat()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Odeslat
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main-panel -->
+</div><!-- /page-app -->
+
+</div><!-- /root -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════
+const GENRES=[
+  {id:'fantasy',l:'Fantasy',i:'⚔️',d:'Magie, draci, jiné světy'},
+  {id:'romance',l:'Romantika',i:'💞',d:'Láska, city, vášeň'},
+  {id:'thriller',l:'Thriller',i:'🔪',d:'Napětí, záhady, zvraty'},
+  {id:'scifi',l:'Sci-Fi',i:'🚀',d:'Vesmír, technologie'},
+  {id:'horror',l:'Horor',i:'👻',d:'Strach, temnota'},
+  {id:'historical',l:'Historický',i:'🏰',d:'Minulost, epochy'},
+  {id:'adventure',l:'Dobrodružný',i:'🗺️',d:'Výpravy, hrdinství'},
+  {id:'crime',l:'Krimi',i:'🔍',d:'Vraždy, detektivové'},
+];
+const LENGTHS=[
+  {id:'short',l:'Krátká',ch:'5–10 kapitol',d:'Rychlé čtení'},
+  {id:'medium',l:'Střední',ch:'10–20 kapitol',d:'Víkendová četba'},
+  {id:'long',l:'Dlouhá',ch:'20–40 kapitol',d:'Plný příběh'},
+  {id:'epic',l:'Epický román',ch:'40+ kapitol',d:'Ságová epopej'},
+];
+const STYLES=[
+  {id:'romantic',l:'Romantický',d:'Poetický, citový'},
+  {id:'dark',l:'Temný',d:'Mrazivý, intenzivní'},
+  {id:'action',l:'Akční',d:'Rychlý, dynamický'},
+  {id:'poetic',l:'Poetický',d:'Obrazný, lyrický'},
+  {id:'dramatic',l:'Dramatický',d:'Emotivní, plný zvratů'},
+  {id:'humorous',l:'Humorný',d:'Lehký, zábavný'},
+];
+const PHASES=['Bible příběhu','Osnova','Psaní kapitol','Konzistence','Finalizace'];
+const COVERS={fantasy:['#0d1b4e','#3b0a6b'],romance:['#4a0a2e','#1a0a18'],thriller:['#111','#222'],scifi:['#0a1a3e','#003366'],horror:['#0a0a0a','#2a0a0a'],historical:['#2e1a0a','#1a0f06'],adventure:['#0a2e0a','#0a1a06'],crime:['#1a1a0a','#111']};
+const QUOTES=[
+  {q:'Příběh není o tom, co se stane. Příběh je o tom, co to s postavami udělá.',a:'Robert McKee'},
+  {q:'Piš první draft s otevřeným srdcem. Druhý draft s otevřenou myslí.',a:'Maya Angelou'},
+  {q:'Existují tři pravidla pro psaní románu. Jenže nikdo neví, jaká jsou.',a:'W. Somerset Maugham'},
+];
+
+let state={
+  user:null,
+  books:[],
+  currentBook:null,
+  // wizard
+  wGenre:'',wTitle:'',wTheme:'',wSetting:'',wChars:[{name:'',age:'',appearance:'',character:''}],wLength:'medium',wStyle:'dramatic',wStep:1,
+  // chat
+  chatHistory:[],
+};
+
+// ══════════════════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════════════════
+let toastTimer;
+function toast(msg,type='ok'){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className='toast show '+type;
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),3400);
+}
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function coverStyle(genre){
+  const [c1,c2]=COVERS[genre]||['#1e1e30','#0f0f1a'];
+  return `background:linear-gradient(160deg,${c1},${c2})`;
+}
+
+function genreInfo(id){return GENRES.find(g=>g.id===id)||{l:id,i:'📖'};}
+
+// ══════════════════════════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════════════════════════
+let authMode='login';
+
+function switchAuthMode(){
+  authMode=authMode==='login'?'register':'login';
+  const isReg=authMode==='register';
+  document.getElementById('auth-title').textContent=isReg?'Vytvoř účet ✨':'Vítej zpět 👋';
+  document.getElementById('auth-sub').textContent=isReg?'Začni psát svůj první román zdarma':'Přihlas se a pokračuj ve svém příběhu';
+  document.getElementById('auth-name-wrap').style.display=isReg?'block':'none';
+  document.getElementById('auth-forgot').style.display=isReg?'none':'block';
+  document.getElementById('auth-demo-btn').style.display=isReg?'none':'block';
+  document.getElementById('auth-submit-btn').textContent=isReg?'Vytvořit účet →':'Přihlásit se →';
+  document.getElementById('auth-switch').innerHTML=isReg?'Už máš účet? <a onclick="switchAuthMode()">Přihlas se</a>':'Ještě nemáš účet? <a onclick="switchAuthMode()">Zaregistruj se</a>';
+  document.getElementById('auth-error').classList.remove('show');
+}
+
+function togglePw(){
+  const inp=document.getElementById('auth-password');
+  const tog=document.getElementById('pw-toggle');
+  if(inp.type==='password'){inp.type='text';tog.textContent='🙈';}
+  else{inp.type='password';tog.textContent='👁️';}
+}
+
+function showAuthError(msg){
+  const el=document.getElementById('auth-error');
+  el.textContent='⚠️ '+msg;el.classList.add('show');
+}
+
+function authSubmit(){
+  const email=document.getElementById('auth-email').value.trim();
+  const pw=document.getElementById('auth-password').value;
+  const name=document.getElementById('auth-name').value.trim();
+  document.getElementById('auth-error').classList.remove('show');
+  if(!email||!pw){showAuthError('Vyplň všechna povinná pole.');return;}
+  if(authMode==='register'&&!name){showAuthError('Zadej své jméno.');return;}
+  if(pw.length<6){showAuthError('Heslo musí mít alespoň 6 znaků.');return;}
+  const userName=authMode==='register'?name:(email==='tereza@email.cz'?'Tereza Nováková':email.split('@')[0]);
+  loginUser({name:userName,email});
+}
+
+function quickLogin(provider){
+  const users={google:{name:'Google Uživatel',email:'user@gmail.com'},github:{name:'GitHub Uživatel',email:'user@github.com'},demo:{name:'Demo Uživatel',email:'demo@storyforge.ai'}};
+  loginUser(users[provider]||users.demo);
+}
+
+function loginUser(user){
+  state.user=user;
+  document.getElementById('user-avatar').textContent=user.name[0].toUpperCase();
+  document.getElementById('user-name-label').textContent=user.name;
+  document.getElementById('user-email-label').textContent=user.email;
+  document.getElementById('dash-greeting').textContent='Vítej zpět, '+user.name.split(' ')[0]+'! 👋';
+  document.getElementById('page-auth').classList.remove('active');
+  document.getElementById('page-app').classList.add('active');
+  renderQuote();renderDashboard();
+}
+
+function logout(){
+  if(!confirm('Odhlásit se?'))return;
+  state.user=null;
+  document.getElementById('page-app').classList.remove('active');
+  document.getElementById('page-auth').classList.add('active');
+}
+
+// ══════════════════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════════════════
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  document.querySelectorAll('.nav-item[data-screen]').forEach(n=>n.classList.remove('active'));
+  const navEl=document.querySelector('.nav-item[data-screen="'+name+'"]');
+  if(navEl)navEl.classList.add('active');
+  document.getElementById('main-panel').scrollTop=0;
+  if(name==='dashboard')renderDashboard();
+  if(name==='library')renderLibrary();
+  if(name==='wizard')renderWizardStep(state.wStep);
+}
+
+// ══════════════════════════════════════════════════════════
+// CLAUDE API
+// ══════════════════════════════════════════════════════════
+async function callClaude(messages,system){
+  const r=await fetch('/api/claude',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:4000,system,messages}),
+  });
+  const d=await r.json();
+  if(d.error)throw new Error(d.error.message);
+  return d.content.map(b=>b.text||'').join('');
+}
+
+// ══════════════════════════════════════════════════════════
+// WIZARD
+// ══════════════════════════════════════════════════════════
+function resetWizard(){
+  state.wGenre='';state.wTitle='';state.wTheme='';state.wSetting='';
+  state.wChars=[{name:'',age:'',appearance:'',character:''}];
+  state.wLength='medium';state.wStyle='dramatic';state.wStep=1;
+  renderGenreGrid();renderLengthOpts();renderStyleGrid();renderChars();
+  renderWizardStep(1);
+}
+
+function renderGenreGrid(){
+  const grid=document.getElementById('genre-grid');
+  grid.innerHTML=GENRES.map(g=>`
+    <div class="genre-card${state.wGenre===g.id?' sel':''}" onclick="selectGenre('${g.id}')">
+      <div class="gi">${g.i}</div><div class="gn">${g.l}</div><div class="gd">${g.d}</div>
+    </div>`).join('');
+}
+function selectGenre(id){
+  state.wGenre=id;renderGenreGrid();
+  document.getElementById('wiz1-next').disabled=false;
+}
+
+function renderLengthOpts(){
+  document.getElementById('length-opts').innerHTML=LENGTHS.map(l=>`
+    <div class="length-opt${state.wLength===l.id?' sel':''}" onclick="selectLength('${l.id}')">
+      <div><div style="font-weight:600;font-size:13.5px">${l.l}</div><div style="font-size:12px;color:var(--text3)">${l.d}</div></div>
+      <span class="badge badge-purple">${l.ch}</span>
+    </div>`).join('');
+}
+function selectLength(id){state.wLength=id;renderLengthOpts();}
+
+function renderStyleGrid(){
+  document.getElementById('style-grid').innerHTML=STYLES.map(s=>`
+    <div class="style-card${state.wStyle===s.id?' sel':''}" onclick="selectStyle('${s.id}')">
+      <div class="sn">${s.l}</div><div class="sd">${s.d}</div>
+    </div>`).join('');
+}
+function selectStyle(id){state.wStyle=id;renderStyleGrid();renderSummary();}
+
+function renderChars(){
+  document.getElementById('chars-container').innerHTML=state.wChars.map((c,i)=>`
+    <div class="char-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <span style="font-size:12.5px;color:var(--purple3);font-weight:600">Postava ${i+1}</span>
+        ${i>0?`<button class="btn btn-ghost btn-sm" style="color:var(--text3);font-size:16px;line-height:1;padding:2px 7px" onclick="removeChar(${i})">×</button>`:''}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div><label class="label">Jméno</label><input class="input" placeholder="Jméno" value="${esc(c.name)}" oninput="updateChar(${i},'name',this.value)"/></div>
+        <div><label class="label">Věk</label><input class="input" type="number" placeholder="25" value="${esc(c.age)}" oninput="updateChar(${i},'age',this.value)"/></div>
+      </div>
+      <div style="margin-bottom:10px"><label class="label">Vzhled</label><input class="input" placeholder="Popis vzhledu..." value="${esc(c.appearance)}" oninput="updateChar(${i},'appearance',this.value)"/></div>
+      <div><label class="label">Charakter & Motivace</label><textarea class="input" placeholder="Kdo je? Co chce?" oninput="updateChar(${i},'character',this.value)">${esc(c.character)}</textarea></div>
+    </div>`).join('');
+}
+function addChar(){state.wChars.push({name:'',age:'',appearance:'',character:''});renderChars();}
+function removeChar(i){state.wChars.splice(i,1);renderChars();}
+function updateChar(i,f,v){state.wChars[i][f]=v;}
+
+function renderSummary(){
+  const g=genreInfo(state.wGenre);const l=LENGTHS.find(x=>x.id===state.wLength)||{};const s=STYLES.find(x=>x.id===state.wStyle)||{};
+  document.getElementById('wiz-summary').innerHTML=`
+    <div style="font-size:12px;color:var(--purple3);font-weight:700;margin-bottom:10px">Souhrn</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;font-size:12.5px">
+      <div><span style="color:var(--text3)">Žánr: </span><span style="font-weight:500">${g.l}</span></div>
+      <div><span style="color:var(--text3)">Název: </span><span style="font-weight:500">${state.wTitle||'—'}</span></div>
+      <div><span style="color:var(--text3)">Délka: </span><span style="font-weight:500">${l.ch||'—'}</span></div>
+      <div><span style="color:var(--text3)">Styl: </span><span style="font-weight:500">${s.l||'—'}</span></div>
+      <div><span style="color:var(--text3)">Postav: </span><span style="font-weight:500">${state.wChars.length}</span></div>
+      <div><span style="color:var(--text3)">Prostředí: </span><span style="font-weight:500">${state.wSetting||'—'}</span></div>
+    </div>`;
+}
+
+function wizNext(step){
+  if(step===3){state.wTitle=document.getElementById('w-title').value;state.wTheme=document.getElementById('w-theme').value;state.wSetting=document.getElementById('w-setting').value;if(!state.wTheme){toast('Zadej prosím téma knihy','err');return;}}
+  state.wStep=step;renderWizardStep(step);
+  if(step===5)renderSummary();
+}
+function wizBack(step){state.wStep=step;renderWizardStep(step);}
+
+function renderWizardStep(step){
+  for(let i=1;i<=5;i++){
+    document.getElementById('wiz'+i).style.display=i===step?'block':'none';
+    document.getElementById('seg'+i).className='step-seg'+(i<=step?' done':'');
+  }
+  document.getElementById('wiz-step-label').textContent='Krok '+step+' z 5';
+}
+
+// ══════════════════════════════════════════════════════════
+// GENERATION
+// ══════════════════════════════════════════════════════════
+function genLog(msg){
+  const el=document.getElementById('gen-log');
+  const line=document.createElement('div');line.className='gen-log-line';line.textContent=msg;
+  el.appendChild(line);el.scrollTop=el.scrollHeight;
+}
+function genPct(pct){
+  document.getElementById('gen-pfill').style.width=pct+'%';
+  document.getElementById('gen-pct').textContent=pct+'% dokončeno';
+}
+function setGenPhase(phase){
+  const el=document.getElementById('gen-phases');
+  el.innerHTML=PHASES.map((p,i)=>{
+    const n=i+1;const done=n<phase;const active=n===phase;
+    return `<div class="gen-phase${done?' done':''}${active?' active':''}">
+      <div class="gen-dot">${done?'✓':n}</div>
+      <div class="gen-label">${p}</div>
+    </div>`;
+  }).join('');
+}
+
+async function startGeneration(){
+  showScreen('generating');
+  const {wGenre:genre,wTitle,wTheme,wSetting,wChars,wLength,wStyle}=state;
+  const title=wTitle||'Bez názvu';
+  const charsTxt=wChars.map((c,i)=>`${c.name||'Postava '+(i+1)}, ${c.age||'?'} let. ${c.appearance}. ${c.character}`).join('\n');
+  const chapCount={short:'6',medium:'10',long:'14',epic:'20'}[wLength]||'10';
+
+  try{
+    setGenPhase(1);genLog('📖 Vytvářím bibli příběhu...');genPct(6);
+    const bibleRaw=await callClaude(
+      [{role:'user',content:`Žánr:${genre}. Název:"${title}". Téma:${wTheme}. Prostředí:${wSetting}. Postavy:\n${charsTxt}`}],
+      `Vytvoř bibli příběhu jako JSON: {"world":"...","rules":"...","mainConflict":"...","locations":["..."],"themes":["..."]}. Bohatě popis svět a pravidla. Pouze JSON, žádné backticks.`
+    );
+    let bible={};try{bible=JSON.parse(bibleRaw.replace(/```json|```/g,'').trim());}catch{bible={world:bibleRaw};}
+    genLog('✅ Bible hotova');genPct(20);
+
+    setGenPhase(2);genLog('🗂️ Tvořím osnovu kapitol...');
+    const outlineRaw=await callClaude(
+      [{role:'user',content:`Kniha "${title}" (${genre}). Téma:${wTheme}. Prostředí:${wSetting}. Hlavní konflikt: ${bible.mainConflict||wTheme}. Styl:${wStyle}. Postav: ${chapCount} kapitol.`}],
+      `Vytvoř JSON pole přesně ${chapCount} kapitol: [{"number":1,"title":"...","summary":"..."},...]. Každé shrnutí min 2 věty. Pouze JSON.`
+    );
+    let chapters=[];
+    try{chapters=JSON.parse(outlineRaw.replace(/```json|```/g,'').trim());}
+    catch{chapters=Array.from({length:parseInt(chapCount)},(_, i)=>({number:i+1,title:`Kapitola ${i+1}`,summary:''}));}
+    genLog(`✅ Osnova: ${chapters.length} kapitol`);genPct(32);
+
+    setGenPhase(3);
+    const written=[];
+    const total=Math.min(chapters.length,6);
+    for(let i=0;i<total;i++){
+      const ch=chapters[i];
+      genLog(`✍️ Píšu kapitolu ${ch.number}: "${ch.title}"...`);
+      const prev=written.slice(-2).map(c=>`Kapitola ${c.number} (${c.title}): ${c.content.slice(0,400)}`).join('\n\n');
+      const content=await callClaude(
+        [{role:'user',content:`Napiš kapitolu ${ch.number} s názvem "${ch.title}". Děj: ${ch.summary}. Předchozí kontext:\n${prev}\n\nBible světa: ${JSON.stringify(bible).slice(0,500)}. Styl psaní: ${wStyle}. Postavy: ${charsTxt.slice(0,500)}.`}],
+        `Jsi mistr literárního vyprávění. Piš výhradně v češtině, stylem "${wStyle}". POVINNĚ minimálně 3000 slov — toto je tvrdý limit. Kapitola musí být plnohodnotná jako v tištěném románu: detailní popisy prostředí (barvy, vůně, zvuky, textury), hluboká psychologie postav s vnitřními monology, napínavé dialogy s podtextem, akce s důsledky, emocionální oblouky. Struktura: úvod scény → rozvíjení napětí → kulminace → závěr s háčkem. Zakonči způsobem, který čtenáře donutí číst dál. Bez záhlaví nebo čísla kapitoly.`
+      );
+      written.push({...ch,content,number:i+1});
+      genPct(32+Math.round((i+1)/total*48));
+    }
+    genLog(`✅ Napsáno ${written.length} kapitol`);
+
+    setGenPhase(4);genLog('🔎 Kontroluji konzistenci...');genPct(84);
+    await new Promise(r=>setTimeout(r,700));genLog('✅ Konzistence ověřena');
+
+    setGenPhase(5);genLog('✨ Finalizuji...');genPct(92);
+    const metaRaw=await callClaude(
+      [{role:'user',content:`Kniha: žánr ${genre}, téma ${wTheme}, styl ${wStyle}, kapitoly: ${written.map(c=>c.title).join(', ')}`}],
+      `Vytvoř metadata JSON: {"subtitle":"...","annotation":"..."}. Podtitul max 8 slov, anotace 2-3 věty. Pouze JSON.`
+    );
+    let meta={};try{meta=JSON.parse(metaRaw.replace(/```json|```/g,'').trim());}catch{meta={subtitle:'',annotation:wTheme};}
+
+    const book={
+      id:Date.now(),title,genre,style:wStyle,length:wLength,theme:wTheme,setting:wSetting,characters:wChars,
+      bible,chapters:written,subtitle:meta.subtitle||'',annotation:meta.annotation||'',
+      createdAt:new Date().toISOString(),
+      wordCount:written.reduce((s,c)=>s+(c.content?c.content.split(/\s+/).length:0),0),
+    };
+
+    state.books.push(book);
+    genPct(100);genLog('🎉 Kniha je hotová!');
+    setGenPhase(6);
+    setTimeout(()=>{openBook(book.id);toast('Tvoje kniha je hotová! 🎉','ok');},900);
+
+  }catch(e){
+    genLog('❌ Chyba: '+e.message);
+    toast('Chyba generování: '+e.message,'err');
+    setTimeout(()=>showScreen('dashboard'),2000);
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// BOOK VIEW
+// ══════════════════════════════════════════════════════════
+function openBook(id){
+  const book=state.books.find(b=>b.id===id);
+  if(!book)return;
+  state.currentBook=book;state.chatHistory=[];
+  document.getElementById('book-header-title').textContent=book.title;
+  document.getElementById('book-header-sub').textContent=book.subtitle||'';
+  renderBookRead(book);renderBookOutline(book);
+  const cm=document.getElementById('chat-messages');
+  cm.innerHTML='<div class="chat-empty" id="chat-empty"><div style="font-size:34px;margin-bottom:10px">💬</div><p style="color:var(--text2);font-size:13.5px;margin-bottom:12px">Napiš co chceš změnit nebo vylepšit</p><div><span class="chat-suggestion" onclick="chatSuggest(this)">Přidej více romantiky</span><span class="chat-suggestion" onclick="chatSuggest(this)">Udělej záporáka temnějším</span><span class="chat-suggestion" onclick="chatSuggest(this)">Změň konec kapitoly</span><span class="chat-suggestion" onclick="chatSuggest(this)">Vytvoř novou kapitolu</span></div></div>';
+  switchBookTab('read');
+  showScreen('book');
+  updateNavRecent();
+}
+
+function renderBookRead(book){
+  const g=genreInfo(book.genre);
+  const [c1,c2]=COVERS[book.genre]||['#1e1e30','#0f0f1a'];
+  document.getElementById('book-hero').innerHTML=`
+    <div class="book-hero-cover" style="background:linear-gradient(160deg,${c1},${c2});position:relative;overflow:hidden">
+      <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 30%,rgba(139,92,246,.25) 0%,transparent 60%)"></div>
+      <span style="font-size:40px;position:relative;z-index:1">${g.i}</span>
+    </div>
+    <div style="flex:1">
+      <h1 style="font-size:24px;margin-bottom:6px">${esc(book.title)}</h1>
+      ${book.subtitle?`<p style="color:var(--text2);font-size:14px;font-style:italic;margin-bottom:12px">${esc(book.subtitle)}</p>`:''}
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px">
+        <span class="badge badge-purple">${g.l}</span>
+        <span class="badge" style="background:var(--surface3);color:var(--text2)">${book.chapters.length} kapitol</span>
+        <span class="badge badge-gold">${(book.wordCount||0).toLocaleString()} slov</span>
+      </div>
+      ${book.annotation?`<p style="color:var(--text2);font-size:13px;line-height:1.7">${esc(book.annotation)}</p>`:''}
+    </div>`;
+  document.getElementById('book-chapters').innerHTML=book.chapters.map(ch=>`
+    <div class="chapter-block fade-in">
+      <span class="badge badge-purple" style="margin-bottom:10px">Kapitola ${ch.number}</span>
+      <h3 class="chapter-title">${esc(ch.title)}</h3>
+      <div class="chapter-body">${esc(ch.content)}</div>
+    </div>`).join('');
+}
+
+function renderBookOutline(book){
+  if(book.bible&&book.bible.world){
+    const b=book.bible;
+    document.getElementById('outline-bible').style.display='block';
+    document.getElementById('outline-bible').innerHTML=`
+      <h3 style="font-size:15px;font-family:'Plus Jakarta Sans',sans-serif;margin-bottom:14px">Bible příběhu</h3>
+      ${b.world?`<div style="margin-bottom:10px"><div class="label">Svět</div><p style="font-size:13px;color:var(--text2);line-height:1.65">${esc(b.world)}</p></div>`:''}
+      ${b.mainConflict?`<div><div class="label">Hlavní konflikt</div><p style="font-size:13px;color:var(--text2);line-height:1.65">${esc(b.mainConflict)}</p></div>`:''}`;
+  }
+  document.getElementById('outline-list').innerHTML=book.chapters.map(ch=>`
+    <div class="outline-item">
+      <div class="outline-num">${ch.number}</div>
+      <div><div style="font-weight:600;margin-bottom:3px;font-size:13.5px">${esc(ch.title)}</div>${ch.summary?`<div style="font-size:12px;color:var(--text2)">${esc(ch.summary)}</div>`:''}</div>
+    </div>`).join('');
+}
+
+function switchBookTab(tab){
+  ['read','outline','chat'].forEach(t=>{
+    const el=document.getElementById('book-tab-'+t);
+    if(el)el.style.display='none';
+    const btn=document.getElementById('tab-'+t);
+    if(btn)btn.className='btn btn-sm '+(t===tab?'btn-primary':'btn-outline');
+  });
+  const active=document.getElementById('book-tab-'+tab);
+  if(active)active.style.display=tab==='chat'?'flex':'block';
+}
+
+function exportCurrentBook(){
+  const book=state.currentBook;if(!book)return;
+  const txt=book.title+'\n'+(book.subtitle||'')+'\n\n'+(book.annotation||'')+'\n\n'+'─'.repeat(40)+'\n\n'+
+    book.chapters.map(c=>'KAPITOLA '+c.number+': '+c.title+'\n\n'+c.content).join('\n\n'+'─'.repeat(40)+'\n\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([txt],{type:'text/plain;charset=utf-8'}));
+  a.download=book.title+'.txt';a.click();
+  toast('Exportováno jako TXT ✅','ok');
+}
+
+// ══════════════════════════════════════════════════════════
+// CHAT
+// ══════════════════════════════════════════════════════════
+function chatSuggest(el){
+  document.getElementById('chat-input').value=el.textContent;
+  sendChat();
+}
+
+async function sendChat(){
+  const inp=document.getElementById('chat-input');
+  const msg=inp.value.trim();if(!msg)return;
+  inp.value='';
+  const empty=document.getElementById('chat-empty');
+  if(empty)empty.style.display='none';
+  addChatMsg(msg,'user');
+  state.chatHistory.push({role:'user',content:msg});
+  const book=state.currentBook;
+  const ctx=book?'Kniha: "'+book.title+'", žánr: '+book.genre+', styl: '+book.style+', '+book.chapters.length+' kapitol.':'';
+  const cm=document.getElementById('chat-messages');
+  const loadId='load'+Date.now();
+  const ld=document.createElement('div');
+  ld.className='msg-ai';ld.id=loadId;
+  ld.innerHTML='<span class="pulse" style="display:inline-block;width:6px;height:6px;background:var(--purple2);border-radius:50%;margin:0 2px"></span><span class="pulse" style="display:inline-block;width:6px;height:6px;background:var(--purple2);border-radius:50%;margin:0 2px;animation-delay:.2s"></span><span class="pulse" style="display:inline-block;width:6px;height:6px;background:var(--purple2);border-radius:50%;margin:0 2px;animation-delay:.4s"></span>';
+  cm.appendChild(ld);cm.scrollTop=cm.scrollHeight;
+  try{
+    const reply=await callClaude(state.chatHistory,'Jsi AI spisovatel asistent pro knihu "'+(book?book.title:'')+'". '+ctx+' Odpovídej česky, kreativně a konkrétně.');
+    state.chatHistory.push({role:'assistant',content:reply});
+    document.getElementById(loadId).remove();
+    addChatMsg(reply,'ai');
+  }catch(e){
+    document.getElementById(loadId).remove();
+    addChatMsg('Omlouvám se, nastala chyba: '+e.message,'ai');
+  }
+}
+
+function addChatMsg(text,role){
+  const cm=document.getElementById('chat-messages');
+  const div=document.createElement('div');
+  div.className=role==='user'?'msg-user':'msg-ai';
+  div.textContent=text;
+  cm.appendChild(div);cm.scrollTop=cm.scrollHeight;
+}
+
+// ══════════════════════════════════════════════════════════
+// DASHBOARD & LIBRARY
+// ══════════════════════════════════════════════════════════
+function renderDashboard(){
+  renderNavRecent();
+  const books=state.books.slice(-3).reverse();
+  const grid=document.getElementById('dash-books-grid');
+  const empty=document.getElementById('dash-empty');
+  if(books.length===0){grid.style.display='none';empty.style.display='block';}
+  else{grid.style.display='grid';empty.style.display='none';grid.innerHTML=books.map(b=>bookCardHTML(b)).join('');}
+  const totalWords=state.books.reduce((s,b)=>s+(b.wordCount||0),0);
+  const pct=Math.min(100,Math.round(totalWords/2000*100));
+  const circ=2*Math.PI*42;
+  document.getElementById('progress-circle').setAttribute('stroke-dasharray',(circ*pct/100)+' '+circ);
+  document.getElementById('progress-words').textContent=totalWords.toLocaleString();
+}
+
+function renderLibrary(){
+  const books=state.books;
+  const grid=document.getElementById('lib-grid');
+  const empty=document.getElementById('lib-empty');
+  const cnt=document.getElementById('lib-count');
+  cnt.textContent=books.length+' '+(books.length===1?'kniha':books.length<5?'knihy':'knih');
+  if(books.length===0){grid.style.display='none';empty.style.display='block';}
+  else{grid.style.display='grid';empty.style.display='none';grid.innerHTML=books.map(b=>bookCardHTML(b,true)).join('');}
+}
+
+function bookCardHTML(book){
+  const g=genreInfo(book.genre);
+  const [c1,c2]=COVERS[book.genre]||['#1e1e30','#0f0f1a'];
+  const pct=Math.min(100,Math.round((book.chapters.length||0)/15*100));
+  return '<div class="book-card" onclick="openBook('+book.id+')">'+
+    '<div class="book-cover" style="background:linear-gradient(160deg,'+c1+','+c2+')">'+
+    '<div class="book-cover-overlay"></div><div class="book-cover-gradient"></div>'+
+    '<span class="book-cover-emoji">'+g.i+'</span>'+
+    '<span class="book-genre-badge">'+g.l+'</span>'+
+    '<button class="book-del-btn" onclick="event.stopPropagation();deleteBook('+book.id+')">🗑</button>'+
+    '</div><div class="book-body">'+
+    '<div class="book-title">'+esc(book.title)+'</div>'+
+    '<div class="book-meta">'+book.chapters.length+' kapitol · '+(book.wordCount||0).toLocaleString()+' slov</div>'+
+    '<div class="progress-row"><div class="progress-bar"><div class="progress-fill" style="width:'+pct+'%"></div></div>'+
+    '<span class="progress-label">'+pct+'%</span></div>'+
+    '</div></div>';
+}
+
+function deleteBook(id){
+  if(!confirm('Smazat tuto knihu?'))return;
+  state.books=state.books.filter(b=>b.id!==id);
+  if(state.currentBook&&state.currentBook.id===id)state.currentBook=null;
+  renderDashboard();renderLibrary();updateNavRecent();
+  toast('Kniha smazána');
+}
+
+function updateNavRecent(){renderNavRecent();}
+function renderNavRecent(){
+  const el=document.getElementById('nav-recent');
+  el.innerHTML=state.books.slice(-3).reverse().map(b=>{
+    const g=genreInfo(b.genre);
+    return '<div class="nav-item" onclick="openBook('+b.id+')" style="padding-left:8px">'+
+      '<div class="nav-book-thumb">'+g.i+'</div>'+
+      '<div><div class="nav-book-title">'+esc(b.title)+'</div><div class="nav-book-genre">'+g.l+'</div></div>'+
+      '</div>';
+  }).join('');
+}
+
+function renderQuote(){
+  const q=QUOTES[Math.floor(Math.random()*QUOTES.length)];
+  document.getElementById('quote-box').innerHTML='„'+esc(q.q)+'"<div class="quote-author">– '+esc(q.a)+'</div>';
+}
+
+function continueReading(){
+  if(state.books.length===0){showScreen('wizard');resetWizard();}
+  else openBook(state.books[state.books.length-1].id);
+}
+
+async function generateIdea(){
+  toast('Generuji nápad...','info');
+  try{
+    const idea=await callClaude([{role:'user',content:'Vygeneruj originální nápad na knihu.'}],
+      'Odpověz česky. Stručně: žánr, téma (1 věta), hlavní postava, zajímavý zvrat. Max 3 věty.');
+    toast('💡 '+idea.slice(0,180),'ok');
+  }catch(e){toast('Chyba: '+e.message,'err');}
+}
+
+// ══════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════
+renderGenreGrid();renderLengthOpts();renderStyleGrid();renderChars();
+</script>
+</body>
+</html>
