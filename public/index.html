@@ -935,7 +935,18 @@ async function startGeneration(){
         [{role:'user',content:`Napiš kapitolu ${ch.number} s názvem "${ch.title}". Děj: ${ch.summary}. Předchozí kontext:\n${prev}\n\nBible světa: ${JSON.stringify(bible).slice(0,500)}. Styl psaní: ${wStyle}. Postavy: ${charsTxt.slice(0,500)}.`}],
         `Jsi mistr literárního vyprávění. Piš výhradně v češtině, stylem "${wStyle}". POVINNĚ minimálně 3000 slov — toto je tvrdý limit. Kapitola musí být plnohodnotná jako v tištěném románu: detailní popisy prostředí (barvy, vůně, zvuky, textury), hluboká psychologie postav s vnitřními monology, napínavé dialogy s podtextem, akce s důsledky, emocionální oblouky. Struktura: úvod scény → rozvíjení napětí → kulminace → závěr s háčkem. Zakonči způsobem, který čtenáře donutí číst dál. Bez záhlaví nebo čísla kapitoly.`
       );
-      written.push({...ch,content,number:i+1});
+      // Generate image prompt for this chapter
+      let imagePrompt='';
+      try{
+        const imgRaw=await callClaude(
+          [{role:'user',content:`Kapitola "${ch.title}": ${ch.summary}. Žánr: ${genre}. Prostředí: ${wSetting}.`}],
+          `Vytvoř krátký anglický prompt pro AI image generator (max 18 slov). Popiš klíčovou scénu - prostředí, atmosféru, vizuální prvky. BEZ tváří postav. Styl: "cinematic lighting, detailed digital art". Vrať POUZE prompt, nic jiného.`
+        );
+        imagePrompt=imgRaw.trim().replace(/^["']|["']$/g,'');
+      }catch(e){
+        imagePrompt=`${wSetting} ${genre} scene cinematic lighting detailed digital art`;
+      }
+      written.push({...ch,content,imagePrompt,number:i+1});
       genPct(32+Math.round((i+1)/total*48));
     }
     genLog(`✅ Napsáno ${written.length} kapitol`);
@@ -989,10 +1000,12 @@ function openBook(id){
 function renderBookRead(book){
   const g=genreInfo(book.genre);
   const [c1,c2]=COVERS[book.genre]||['#1e1e30','#0f0f1a'];
+  const coverPrompt=encodeURIComponent(`${book.title} ${book.genre} book cover art, ${book.theme||''}, dramatic lighting, fantasy digital painting, detailed, cinematic&nologo=true`);
   document.getElementById('book-hero').innerHTML=`
     <div class="book-hero-cover" style="background:linear-gradient(160deg,${c1},${c2});position:relative;overflow:hidden">
-      <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 30%,rgba(139,92,246,.25) 0%,transparent 60%)"></div>
-      <span style="font-size:40px;position:relative;z-index:1">${g.i}</span>
+      <img src="https://image.pollinations.ai/prompt/${coverPrompt}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.85" loading="lazy" onerror="this.style.display='none'"/>
+      <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 30%,rgba(139,92,246,.2) 0%,transparent 60%)"></div>
+      <span style="font-size:40px;position:relative;z-index:1;text-shadow:0 2px 8px rgba(0,0,0,.8)">${g.i}</span>
     </div>
     <div style="flex:1">
       <h1 style="font-size:24px;margin-bottom:6px">${esc(book.title)}</h1>
@@ -1004,12 +1017,23 @@ function renderBookRead(book){
       </div>
       ${book.annotation?`<p style="color:var(--text2);font-size:13px;line-height:1.7">${esc(book.annotation)}</p>`:''}
     </div>`;
-  document.getElementById('book-chapters').innerHTML=book.chapters.map(ch=>`
-    <div class="chapter-block fade-in">
+  // CSS for chapter images
+  const imgStyle=document.getElementById('chapter-img-style');
+  if(!imgStyle){
+    const s=document.createElement('style');s.id='chapter-img-style';
+    s.textContent=`.chapter-illustration{width:100%;max-height:340px;object-fit:cover;border-radius:10px;margin-bottom:24px;display:block;background:var(--surface3);}.chapter-illustration-wrap{position:relative;margin-bottom:22px;border-radius:10px;overflow:hidden;}.chapter-illustration-wrap::after{content:'✨ AI ilustrace';position:absolute;bottom:8px;right:10px;font-size:10px;color:rgba(255,255,255,.4);font-family:'Plus Jakarta Sans',sans-serif;}`;
+    document.head.appendChild(s);
+  }
+  document.getElementById('book-chapters').innerHTML=book.chapters.map((ch,idx)=>{
+    const showImg=ch.imagePrompt&&idx%2===0; // image every other chapter
+    const imgUrl=showImg?`https://image.pollinations.ai/prompt/${encodeURIComponent(ch.imagePrompt+'&nologo=true')}`:'';
+    return `<div class="chapter-block fade-in">
       <span class="badge badge-purple" style="margin-bottom:10px">Kapitola ${ch.number}</span>
       <h3 class="chapter-title">${esc(ch.title)}</h3>
+      ${showImg?`<div class="chapter-illustration-wrap"><img class="chapter-illustration" src="${imgUrl}" alt="Ilustrace kapitoly ${ch.number}" loading="lazy" onerror="this.parentElement.style.display='none'"/></div>`:''}
       <div class="chapter-body">${esc(ch.content)}</div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function renderBookOutline(book){
