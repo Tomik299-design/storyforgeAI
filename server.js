@@ -7,71 +7,68 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static("public"));
 
-// Free models on OpenRouter to try in order
-const FREE_MODELS = [
-  "google/gemini-2.0-flash-exp:free",
-  "google/gemma-3-27b-it:free",
-  "meta-llama/llama-3.3-70b-instruct:free",
-  "meta-llama/llama-3.1-70b-instruct:free",
-  "mistralai/mistral-7b-instruct:free",
-  "microsoft/phi-3-mini-128k-instruct:free",
-  "qwen/qwen-2.5-72b-instruct:free",
-];
-
-async function tryModel(apiKey, model, messages, maxTokens) {
-  const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + apiKey,
-      "HTTP-Referer": "https://storyforgeai.onrender.com",
-      "X-Title": "StoryForge AI",
-    },
-    body: JSON.stringify({ model, messages, max_tokens: maxTokens || 4000, temperature: 0.9 }),
-  });
-  const data = await r.json();
-  return data;
-}
-
 app.post("/api/claude", async (req, res) => {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: "Missing OPENROUTER_API_KEY" });
+  const apiKey = process.env.MISTRAL_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: "Missing MISTRAL_API_KEY" });
 
-  const { system, messages, max_tokens } = req.body;
-  const openaiMessages = [];
-  if (system) openaiMessages.push({ role: "system", content: system });
-  for (const msg of messages) openaiMessages.push(msg);
+  try {
+    const { system, messages, max_tokens } = req.body;
 
-  for (const model of FREE_MODELS) {
-    try {
-      console.log("Trying:", model);
-      const data = await tryModel(apiKey, model, openaiMessages, max_tokens);
-      if (data.error) { console.log("Error:", data.error.message?.slice(0, 80)); continue; }
-      const text = data.choices?.[0]?.message?.content || "";
-      if (!text) { console.log("No text from", model); continue; }
-      console.log("OK:", model, "len:", text.length);
-      return res.json({ content: [{ type: "text", text }] });
-    } catch (e) {
-      console.log("Exception:", e.message);
+    const mistralMessages = [];
+    if (system) mistralMessages.push({ role: "system", content: system });
+    for (const msg of messages) mistralMessages.push(msg);
+
+    const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + apiKey,
+      },
+      body: JSON.stringify({
+        model: "mistral-small-latest",
+        messages: mistralMessages,
+        max_tokens: max_tokens || 4000,
+        temperature: 0.9,
+      }),
+    });
+
+    const data = await response.json();
+    console.log("Mistral status:", response.status);
+
+    if (data.error) {
+      console.error("Mistral error:", data.error);
+      return res.status(500).json({ error: data.error.message });
     }
-  }
 
-  res.status(500).json({ error: "Žádný free model není dostupný. Zkus znovu za chvíli." });
+    const text = data.choices?.[0]?.message?.content || "";
+    console.log("OK, length:", text.length);
+    res.json({ content: [{ type: "text", text }] });
+
+  } catch (err) {
+    console.error("Error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.get("/api/test", async (req, res) => {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) return res.json({ status: "ERROR", reason: "OPENROUTER_API_KEY not set" });
-  const results = {};
-  for (const model of FREE_MODELS) {
-    try {
-      const data = await tryModel(apiKey, model, [{ role: "user", content: "Hi" }], 20);
-      results[model] = data.error ? "❌ " + data.error.message?.slice(0, 60) : "✅ " + (data.choices?.[0]?.message?.content || "no text");
-    } catch (e) {
-      results[model] = "❌ " + e.message;
-    }
+  const apiKey = process.env.MISTRAL_API_KEY;
+  if (!apiKey) return res.json({ status: "ERROR", reason: "MISTRAL_API_KEY not set" });
+  try {
+    const r = await fetch("https://api.mistral.ai/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + apiKey },
+      body: JSON.stringify({
+        model: "mistral-small-latest",
+        messages: [{ role: "user", content: "Řekni ahoj česky jednou větou." }],
+        max_tokens: 50,
+      }),
+    });
+    const d = await r.json();
+    if (d.error) return res.json({ status: "ERROR", reason: d.error.message });
+    res.json({ status: "OK", response: d.choices?.[0]?.message?.content });
+  } catch (e) {
+    res.json({ status: "ERROR", reason: e.message });
   }
-  res.json(results);
 });
 
 app.get("*", (req, res) => {
