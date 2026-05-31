@@ -7,84 +7,75 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static("public"));
 
-const MODELS = [
-  "gemini-2.0-flash",
-  "gemini-2.0-flash-lite",
-  "gemini-1.5-flash",
-  "gemini-1.5-flash-8b",
-  "gemini-pro",
-];
-
-async function callGemini(apiKey, model, contents, maxTokens) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents,
-      generationConfig: { maxOutputTokens: maxTokens || 4000, temperature: 0.9 },
-    }),
-  });
-  const data = await res.json();
-  return { status: res.status, data };
-}
-
 app.post("/api/claude", async (req, res) => {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: "Missing GEMINI_API_KEY" });
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: "Missing OPENROUTER_API_KEY" });
 
-  const { system, messages, max_tokens } = req.body;
-  const contents = [];
-  if (system) {
-    contents.push({ role: "user", parts: [{ text: "Systémový pokyn: " + system }] });
-    contents.push({ role: "model", parts: [{ text: "Rozumím." }] });
-  }
-  for (const msg of messages) {
-    contents.push({
-      role: msg.role === "assistant" ? "model" : "user",
-      parts: [{ text: msg.content }],
+  try {
+    const { system, messages, max_tokens } = req.body;
+
+    // OpenRouter uses OpenAI-compatible format
+    const openaiMessages = [];
+    if (system) openaiMessages.push({ role: "system", content: system });
+    for (const msg of messages) openaiMessages.push(msg);
+
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + apiKey,
+        "HTTP-Referer": "https://storyforgeai.onrender.com",
+        "X-Title": "StoryForge AI",
+      },
+      body: JSON.stringify({
+        model: "meta-llama/llama-3.1-8b-instruct:free",
+        messages: openaiMessages,
+        max_tokens: max_tokens || 4000,
+        temperature: 0.9,
+      }),
     });
-  }
 
-  // Try each model until one works
-  for (const model of MODELS) {
-    try {
-      console.log("Trying model:", model);
-      const { status, data } = await callGemini(apiKey, model, contents, max_tokens);
-      if (data.error) { console.log(model, "error:", data.error.message); continue; }
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      if (!text) { console.log(model, "no text"); continue; }
-      console.log("Success with:", model, "length:", text.length);
-      return res.json({ content: [{ type: "text", text }] });
-    } catch (e) {
-      console.log(model, "exception:", e.message);
+    const data = await response.json();
+    console.log("OpenRouter status:", response.status);
+
+    if (data.error) {
+      console.error("OpenRouter error:", data.error);
+      return res.status(500).json({ error: data.error.message });
     }
-  }
 
-  res.status(500).json({ error: "Žádný Gemini model není dostupný. Zkontroluj API klíč na aistudio.google.com" });
+    const text = data.choices?.[0]?.message?.content || "";
+    console.log("Success, length:", text.length);
+    res.json({ content: [{ type: "text", text }] });
+
+  } catch (err) {
+    console.error("Error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// Test endpoint - lists working models
 app.get("/api/test", async (req, res) => {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return res.json({ status: "ERROR", reason: "GEMINI_API_KEY not set" });
-
-  const results = {};
-  for (const model of MODELS) {
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-      const r = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "Hi" }] }] }),
-      });
-      const d = await r.json();
-      results[model] = d.error ? "❌ " + d.error.message.slice(0, 60) : "✅ OK";
-    } catch (e) {
-      results[model] = "❌ " + e.message;
-    }
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) return res.json({ status: "ERROR", reason: "OPENROUTER_API_KEY not set" });
+  try {
+    const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + apiKey,
+        "HTTP-Referer": "https://storyforgeai.onrender.com",
+      },
+      body: JSON.stringify({
+        model: "meta-llama/llama-3.1-8b-instruct:free",
+        messages: [{ role: "user", content: "Řekni ahoj česky." }],
+        max_tokens: 50,
+      }),
+    });
+    const d = await r.json();
+    if (d.error) return res.json({ status: "ERROR", reason: d.error.message });
+    res.json({ status: "OK", response: d.choices?.[0]?.message?.content });
+  } catch (e) {
+    res.json({ status: "ERROR", reason: e.message });
   }
-  res.json(results);
 });
 
 app.get("*", (req, res) => {
