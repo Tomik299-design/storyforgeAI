@@ -166,12 +166,13 @@ select.input{cursor:pointer;}
 .step-seg{flex:1;height:3px;border-radius:2px;transition:background .3s;background:var(--surface3);}
 .step-seg.done{background:var(--purple2);}
 .genre-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;}
-.genre-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:13px 10px;cursor:pointer;transition:all .2s;text-align:center;}
+.genre-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:13px 10px;cursor:pointer;transition:all .2s;text-align:center;position:relative;}
 .genre-card:hover,.genre-card.sel{border-color:var(--purple2);}
 .genre-card.sel{background:rgba(124,58,237,.18);}
 .genre-card .gi{font-size:24px;margin-bottom:5px;}
 .genre-card .gn{font-size:12px;font-weight:600;}
 .genre-card .gd{font-size:10.5px;color:var(--text3);margin-top:2px;}
+.genre-card .sel-num{position:absolute;top:5px;right:7px;width:17px;height:17px;background:var(--purple2);border-radius:50%;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;color:#fff;line-height:1;}
 .style-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
 .style-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;cursor:pointer;transition:all .2s;}
 .style-card:hover,.style-card.sel{border-color:var(--purple2);}
@@ -485,7 +486,8 @@ select.input{cursor:pointer;}
           <!-- STEP 1: Genre -->
           <div id="wiz1" class="fade-in">
             <h2 style="margin-bottom:5px;font-size:21px">Vyber žánr</h2>
-            <p style="color:var(--text2);margin-bottom:20px;font-size:13px">Jaký typ příběhu chceš napsat?</p>
+            <p style="color:var(--text2);margin-bottom:8px;font-size:13px">Vyber 1 nebo 2 žánry — kombinace vytvoří unikátní příběh.</p>
+            <div id="genre-combo-label" style="min-height:22px;margin-bottom:12px;font-size:12.5px;font-weight:600;color:var(--purple3)"></div>
             <div class="genre-grid" id="genre-grid"></div>
             <div class="step-nav"><button class="btn btn-primary" onclick="wizNext(2)" id="wiz1-next" disabled>Pokračovat →</button></div>
           </div>
@@ -635,12 +637,14 @@ select.input{cursor:pointer;}
 const GENRES=[
   {id:'fantasy',l:'Fantasy',i:'⚔️',d:'Magie, draci, jiné světy'},
   {id:'romance',l:'Romantika',i:'💞',d:'Láska, city, vášeň'},
+  {id:'darkromance',l:'Dark Romance',i:'🥀',d:'Temná vášeň, zakázaná láska'},
   {id:'thriller',l:'Thriller',i:'🔪',d:'Napětí, záhady, zvraty'},
   {id:'scifi',l:'Sci-Fi',i:'🚀',d:'Vesmír, technologie'},
   {id:'horror',l:'Horor',i:'👻',d:'Strach, temnota'},
   {id:'historical',l:'Historický',i:'🏰',d:'Minulost, epochy'},
   {id:'adventure',l:'Dobrodružný',i:'🗺️',d:'Výpravy, hrdinství'},
   {id:'crime',l:'Krimi',i:'🔍',d:'Vraždy, detektivové'},
+  {id:'mystery',l:'Mysteriózní',i:'🌫️',d:'Záhady, tajemno, nadpřirozeno'},
 ];
 const LENGTHS=[
   {id:'short',l:'Krátká',ch:'5–10 kapitol',d:'Rychlé čtení'},
@@ -657,7 +661,7 @@ const STYLES=[
   {id:'humorous',l:'Humorný',d:'Lehký, zábavný'},
 ];
 const PHASES=['Bible příběhu','Osnova','Psaní kapitol','Konzistence','Finalizace'];
-const COVERS={fantasy:['#0d1b4e','#3b0a6b'],romance:['#4a0a2e','#1a0a18'],thriller:['#111','#222'],scifi:['#0a1a3e','#003366'],horror:['#0a0a0a','#2a0a0a'],historical:['#2e1a0a','#1a0f06'],adventure:['#0a2e0a','#0a1a06'],crime:['#1a1a0a','#111']};
+const COVERS={fantasy:['#0d1b4e','#3b0a6b'],romance:['#4a0a2e','#1a0a18'],darkromance:['#1a0010','#3b0020'],thriller:['#111','#222'],scifi:['#0a1a3e','#003366'],horror:['#0a0a0a','#2a0a0a'],historical:['#2e1a0a','#1a0f06'],adventure:['#0a2e0a','#0a1a06'],crime:['#1a1a0a','#111'],mystery:['#0d0d2e','#1a0a3e']};
 const QUOTES=[
   {q:'Příběh není o tom, co se stane. Příběh je o tom, co to s postavami udělá.',a:'Robert McKee'},
   {q:'Piš první draft s otevřeným srdcem. Druhý draft s otevřenou myslí.',a:'Maya Angelou'},
@@ -669,7 +673,7 @@ let state={
   books:[],
   currentBook:null,
   // wizard
-  wGenre:'',wTitle:'',wTheme:'',wSetting:'',wChars:[{name:'',age:'',appearance:'',character:''}],wLength:'medium',wStyle:'dramatic',wStep:1,
+  wGenres:[],wTitle:'',wTheme:'',wSetting:'',wChars:[{name:'',age:'',appearance:'',character:''}],wLength:'medium',wStyle:'dramatic',wStep:1,
   // chat
   chatHistory:[],
 };
@@ -693,6 +697,14 @@ function coverStyle(genre){
 }
 
 function genreInfo(id){return GENRES.find(g=>g.id===id)||{l:id,i:'📖'};}
+function genreLabel(genres){
+  // genres can be array or comma-separated string
+  const arr=Array.isArray(genres)?genres:String(genres).split(',').map(s=>s.trim()).filter(Boolean);
+  if(arr.length===0)return{l:'Neznámý',i:'📖'};
+  if(arr.length===1){const g=genreInfo(arr[0]);return{l:g.l,i:g.i};}
+  const g1=genreInfo(arr[0]);const g2=genreInfo(arr[1]);
+  return{l:g1.l+' × '+g2.l,i:g1.i+g2.i};
+}
 
 // ══════════════════════════════════════════════════════════
 // AUTH
@@ -791,7 +803,7 @@ async function callClaude(messages,system){
 // WIZARD
 // ══════════════════════════════════════════════════════════
 function resetWizard(){
-  state.wGenre='';state.wTitle='';state.wTheme='';state.wSetting='';
+  state.wGenres=[];state.wTitle='';state.wTheme='';state.wSetting='';
   state.wChars=[{name:'',age:'',appearance:'',character:''}];
   state.wLength='medium';state.wStyle='dramatic';state.wStep=1;
   renderGenreGrid();renderLengthOpts();renderStyleGrid();renderChars();
@@ -800,14 +812,26 @@ function resetWizard(){
 
 function renderGenreGrid(){
   const grid=document.getElementById('genre-grid');
-  grid.innerHTML=GENRES.map(g=>`
-    <div class="genre-card${state.wGenre===g.id?' sel':''}" onclick="selectGenre('${g.id}')">
-      <div class="gi">${g.i}</div><div class="gn">${g.l}</div><div class="gd">${g.d}</div>
-    </div>`).join('');
+  grid.innerHTML=GENRES.map(g=>{
+    const idx=state.wGenres.indexOf(g.id);
+    const sel=idx!==-1;
+    const num=sel?`<span class="sel-num">${idx+1}</span>`:'';
+    return `<div class="genre-card${sel?' sel':''}" onclick="selectGenre('${g.id}')">${num}<div class="gi">${g.i}</div><div class="gn">${g.l}</div><div class="gd">${g.d}</div></div>`;
+  }).join('');
 }
 function selectGenre(id){
-  state.wGenre=id;renderGenreGrid();
-  document.getElementById('wiz1-next').disabled=false;
+  const idx=state.wGenres.indexOf(id);
+  if(idx!==-1){state.wGenres.splice(idx,1);}
+  else if(state.wGenres.length<2){state.wGenres.push(id);}
+  else{toast('Můžeš vybrat max 2 žánry','err');return;}
+  renderGenreGrid();
+  const cl=document.getElementById('genre-combo-label');
+  if(cl){
+    if(state.wGenres.length===2){const gl=genreLabel(state.wGenres);cl.textContent='✨ Kombinace: '+gl.l;}
+    else if(state.wGenres.length===1){const g=genreInfo(state.wGenres[0]);cl.textContent=g.i+' '+g.l+' — chceš přidat druhý žánr?';}
+    else{cl.textContent='';}
+  }
+  document.getElementById('wiz1-next').disabled=state.wGenres.length===0;
 }
 
 function renderLengthOpts(){
@@ -847,11 +871,11 @@ function removeChar(i){state.wChars.splice(i,1);renderChars();}
 function updateChar(i,f,v){state.wChars[i][f]=v;}
 
 function renderSummary(){
-  const g=genreInfo(state.wGenre);const l=LENGTHS.find(x=>x.id===state.wLength)||{};const s=STYLES.find(x=>x.id===state.wStyle)||{};
+  const gl=genreLabel(state.wGenres);const l=LENGTHS.find(x=>x.id===state.wLength)||{};const s=STYLES.find(x=>x.id===state.wStyle)||{};
   document.getElementById('wiz-summary').innerHTML=`
     <div style="font-size:12px;color:var(--purple3);font-weight:700;margin-bottom:10px">Souhrn</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;font-size:12.5px">
-      <div><span style="color:var(--text3)">Žánr: </span><span style="font-weight:500">${g.l}</span></div>
+      <div><span style="color:var(--text3)">Žánr: </span><span style="font-weight:500">${gl.l}</span></div>
       <div><span style="color:var(--text3)">Název: </span><span style="font-weight:500">${state.wTitle||'—'}</span></div>
       <div><span style="color:var(--text3)">Délka: </span><span style="font-weight:500">${l.ch||'—'}</span></div>
       <div><span style="color:var(--text3)">Styl: </span><span style="font-weight:500">${s.l||'—'}</span></div>
@@ -900,15 +924,19 @@ function setGenPhase(phase){
 
 async function startGeneration(){
   showScreen('generating');
-  const {wGenre:genre,wTitle,wTheme,wSetting,wChars,wLength,wStyle}=state;
+  const {wGenres,wTitle,wTheme,wSetting,wChars,wLength,wStyle}=state;
+  const gl=genreLabel(wGenres);
+  const genreTxt=gl.l; // e.g. "Fantasy × Dark Romance"
+  const genreIds=wGenres.join(','); // stored in book
   const title=wTitle||'Bez názvu';
   const charsTxt=wChars.map((c,i)=>`${c.name||'Postava '+(i+1)}, ${c.age||'?'} let. ${c.appearance}. ${c.character}`).join('\n');
-  const chapCount={short:'6',medium:'10',long:'14',epic:'20'}[wLength]||'10';
+  const chapCount={short:'6',medium:'12',long:'18',epic:'25'}[wLength]||'12';
+  const maxChapPerRun={short:6,medium:12,long:18,epic:25}[wLength]||12;
 
   try{
     setGenPhase(1);genLog('📖 Vytvářím bibli příběhu...');genPct(6);
     const bibleRaw=await callClaude(
-      [{role:'user',content:`Žánr:${genre}. Název:"${title}". Téma:${wTheme}. Prostředí:${wSetting}. Postavy:\n${charsTxt}`}],
+      [{role:'user',content:`Žánr:${genreTxt}. Název:"${title}". Téma:${wTheme}. Prostředí:${wSetting}. Postavy:\n${charsTxt}`}],
       `Vytvoř bibli příběhu jako JSON: {"world":"...","rules":"...","mainConflict":"...","locations":["..."],"themes":["..."]}. Bohatě popis svět a pravidla. Pouze JSON, žádné backticks.`
     );
     let bible={};try{bible=JSON.parse(bibleRaw.replace(/```json|```/g,'').trim());}catch{bible={world:bibleRaw};}
@@ -926,25 +954,38 @@ async function startGeneration(){
 
     setGenPhase(3);
     const written=[];
-    const total=Math.min(chapters.length,6);
+    const total=Math.min(chapters.length,maxChapPerRun);
     for(let i=0;i<total;i++){
       const ch=chapters[i];
       genLog(`✍️ Píšu kapitolu ${ch.number}: "${ch.title}"...`);
-      const prev=written.slice(-2).map(c=>`Kapitola ${c.number} (${c.title}): ${c.content.slice(0,400)}`).join('\n\n');
+
+      // Build continuity context - send ENDING of previous chapter, not beginning
+      let prevContext='';
+      if(written.length>0){
+        const lastCh=written[written.length-1];
+        const lastEnding=lastCh.content.slice(-1200);
+        prevContext='\n\nPŘEDCHOZÍ KAPITOLA '+lastCh.number+' („'+lastCh.title+'“) SKONČILA PŘESNĚ TAKTO:\n"""\n'+lastEnding+'\n"""\nTvoje kapitola '+ch.number+' MUSÍ přímo navázat na tento moment — jako by čtenář otočil stránku. Žádný časový skok, žádné shrnutí co se mezitím stalo. Začni přesně tam kde předchozí kapitola přestala.';
+        if(written.length>1){
+          const prevCh=written[written.length-2];
+          prevContext+='\n\nDodatečný kontext z kapitoly '+prevCh.number+': '+prevCh.content.slice(-300);
+        }
+      }
+
       const content=await callClaude(
-        [{role:'user',content:`Napiš kapitolu ${ch.number} s názvem "${ch.title}". Děj: ${ch.summary}. Předchozí kontext:\n${prev}\n\nBible světa: ${JSON.stringify(bible).slice(0,500)}. Styl psaní: ${wStyle}. Postavy: ${charsTxt.slice(0,500)}.`}],
-        `Jsi mistr literárního vyprávění. Piš výhradně v češtině, stylem "${wStyle}". POVINNĚ minimálně 3000 slov — toto je tvrdý limit. Kapitola musí být plnohodnotná jako v tištěném románu: detailní popisy prostředí (barvy, vůně, zvuky, textury), hluboká psychologie postav s vnitřními monology, napínavé dialogy s podtextem, akce s důsledky, emocionální oblouky. Struktura: úvod scény → rozvíjení napětí → kulminace → závěr s háčkem. Zakonči způsobem, který čtenáře donutí číst dál. Bez záhlaví nebo čísla kapitoly.`
+        [{role:'user',content:'Napiš kapitolu '+ch.number+' s názvem „'+ch.title+'“. Plán scény: '+ch.summary+'. Prostředí: '+wSetting+'. Bible světa: '+JSON.stringify(bible).slice(0,400)+'. Styl: '+wStyle+'. Postavy: '+charsTxt.slice(0,400)+'.'+prevContext}],
+        `Jsi mistr literárního vypravěčství. Piš výhradně v češtině, stylem "${wStyle}". POVINNĚ minimálně 3000 slov \u2014 toto je tvrdý limit.\n\nKRITICKÁ PRAVIDLA NÁVAZNOSTI (porušení zničí čtenářský zážitek):\n- Začni PŘESNĚ tam kde předchozí kapitola přestala \u2014 stejná scéna, stejný moment, stejná atmosféra\n- NIKDY nepřeskákuj čas ani děj bez plynného přechodu v textu\n- Pokud předchozí kapitola skončila napětím nebo otázkou, tuto kapitolu ZAČNI tím jak se to rozuzluje nebo prohlubuje\n- Postavy si pamatují vše z minulé kapitoly \u2014 jejich emoce, rozhodnutí a vztahy musí být kontinuální\n\nKVALITA TEXTU:\nPlnohodnotná kapitola jako v tištěném románu: detailní popisy prostředí (barvy, vůně, zvuky, textury), hluboká psychologie postav s vnitřními monology, napínavé dialogy s podtextem, akce s důsledky, emoční oblouky. Struktura: přímé navázání na předchozí kapitolu \u2192 rozvíjení napětí \u2192 kulminace \u2192 závěr s háčkem do další kapitoly. Bez záhlaví nebo čísla kapitoly.`
       );
+
       // Generate image prompt for this chapter
       let imagePrompt='';
       try{
         const imgRaw=await callClaude(
-          [{role:'user',content:`Kapitola "${ch.title}": ${ch.summary}. Žánr: ${genre}. Prostředí: ${wSetting}.`}],
+          [{role:'user',content:`Kapitola "${ch.title}": ${ch.summary}. Žánr: ${genreTxt}. Prostředí: ${wSetting}.`}],
           `Vytvoř krátký anglický prompt pro AI image generator (max 18 slov). Popiš klíčovou scénu - prostředí, atmosféru, vizuální prvky. BEZ tváří postav. Styl: "cinematic lighting, detailed digital art". Vrať POUZE prompt, nic jiného.`
         );
         imagePrompt=imgRaw.trim().replace(/^["']|["']$/g,'');
       }catch(e){
-        imagePrompt=`${wSetting} ${genre} scene cinematic lighting detailed digital art`;
+        imagePrompt=`${wSetting} ${genreTxt} scene cinematic lighting detailed digital art`;
       }
       written.push({...ch,content,imagePrompt,number:i+1});
       genPct(32+Math.round((i+1)/total*48));
@@ -956,13 +997,13 @@ async function startGeneration(){
 
     setGenPhase(5);genLog('✨ Finalizuji...');genPct(92);
     const metaRaw=await callClaude(
-      [{role:'user',content:`Kniha: žánr ${genre}, téma ${wTheme}, styl ${wStyle}, kapitoly: ${written.map(c=>c.title).join(', ')}`}],
+      [{role:'user',content:`Kniha: žánr ${genreTxt}, téma ${wTheme}, styl ${wStyle}, kapitoly: ${written.map(c=>c.title).join(', ')}`}],
       `Vytvoř metadata JSON: {"subtitle":"...","annotation":"..."}. Podtitul max 8 slov, anotace 2-3 věty. Pouze JSON.`
     );
     let meta={};try{meta=JSON.parse(metaRaw.replace(/```json|```/g,'').trim());}catch{meta={subtitle:'',annotation:wTheme};}
 
     const book={
-      id:Date.now(),title,genre,style:wStyle,length:wLength,theme:wTheme,setting:wSetting,characters:wChars,
+      id:Date.now(),title,genre:genreIds,style:wStyle,length:wLength,theme:wTheme,setting:wSetting,characters:wChars,
       bible,chapters:written,subtitle:meta.subtitle||'',annotation:meta.annotation||'',
       createdAt:new Date().toISOString(),
       wordCount:written.reduce((s,c)=>s+(c.content?c.content.split(/\s+/).length:0),0),
@@ -998,20 +1039,21 @@ function openBook(id){
 }
 
 function renderBookRead(book){
-  const g=genreInfo(book.genre);
-  const [c1,c2]=COVERS[book.genre]||['#1e1e30','#0f0f1a'];
+  const gl=genreLabel(book.genre);
+  const primaryGenre=Array.isArray(book.genre)?book.genre[0]:String(book.genre).split(',')[0];
+  const [c1,c2]=COVERS[primaryGenre]||['#1e1e30','#0f0f1a'];
   const coverPrompt=encodeURIComponent(`${book.title} ${book.genre} book cover art, ${book.theme||''}, dramatic lighting, fantasy digital painting, detailed, cinematic&nologo=true`);
   document.getElementById('book-hero').innerHTML=`
     <div class="book-hero-cover" style="background:linear-gradient(160deg,${c1},${c2});position:relative;overflow:hidden">
       <img src="https://image.pollinations.ai/prompt/${coverPrompt}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.85" loading="lazy" onerror="this.style.display='none'"/>
       <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 30%,rgba(139,92,246,.2) 0%,transparent 60%)"></div>
-      <span style="font-size:40px;position:relative;z-index:1;text-shadow:0 2px 8px rgba(0,0,0,.8)">${g.i}</span>
+      <span style="font-size:40px;position:relative;z-index:1;text-shadow:0 2px 8px rgba(0,0,0,.8)">${gl.i}</span>
     </div>
     <div style="flex:1">
       <h1 style="font-size:24px;margin-bottom:6px">${esc(book.title)}</h1>
       ${book.subtitle?`<p style="color:var(--text2);font-size:14px;font-style:italic;margin-bottom:12px">${esc(book.subtitle)}</p>`:''}
       <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px">
-        <span class="badge badge-purple">${g.l}</span>
+        <span class="badge badge-purple">${gl.l}</span>
         <span class="badge" style="background:var(--surface3);color:var(--text2)">${book.chapters.length} kapitol</span>
         <span class="badge badge-gold">${(book.wordCount||0).toLocaleString()} slov</span>
       </div>
@@ -1144,14 +1186,15 @@ function renderLibrary(){
 }
 
 function bookCardHTML(book){
-  const g=genreInfo(book.genre);
-  const [c1,c2]=COVERS[book.genre]||['#1e1e30','#0f0f1a'];
+  const gl=genreLabel(book.genre);
+  const primaryGenre=Array.isArray(book.genre)?book.genre[0]:String(book.genre).split(',')[0];
+  const [c1,c2]=COVERS[primaryGenre]||['#1e1e30','#0f0f1a'];
   const pct=Math.min(100,Math.round((book.chapters.length||0)/15*100));
   return '<div class="book-card" onclick="openBook('+book.id+')">'+
     '<div class="book-cover" style="background:linear-gradient(160deg,'+c1+','+c2+')">'+
     '<div class="book-cover-overlay"></div><div class="book-cover-gradient"></div>'+
-    '<span class="book-cover-emoji">'+g.i+'</span>'+
-    '<span class="book-genre-badge">'+g.l+'</span>'+
+    '<span class="book-cover-emoji">'+gl.i+'</span>'+
+    '<span class="book-genre-badge">'+gl.l+'</span>'+
     '<button class="book-del-btn" onclick="event.stopPropagation();deleteBook('+book.id+')">🗑</button>'+
     '</div><div class="book-body">'+
     '<div class="book-title">'+esc(book.title)+'</div>'+
@@ -1173,10 +1216,10 @@ function updateNavRecent(){renderNavRecent();}
 function renderNavRecent(){
   const el=document.getElementById('nav-recent');
   el.innerHTML=state.books.slice(-3).reverse().map(b=>{
-    const g=genreInfo(b.genre);
+    const gl=genreLabel(b.genre);
     return '<div class="nav-item" onclick="openBook('+b.id+')" style="padding-left:8px">'+
-      '<div class="nav-book-thumb">'+g.i+'</div>'+
-      '<div><div class="nav-book-title">'+esc(b.title)+'</div><div class="nav-book-genre">'+g.l+'</div></div>'+
+      '<div class="nav-book-thumb">'+gl.i+'</div>'+
+      '<div><div class="nav-book-title">'+esc(b.title)+'</div><div class="nav-book-genre">'+gl.l+'</div></div>'+
       '</div>';
   }).join('');
 }
