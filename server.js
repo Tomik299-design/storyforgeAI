@@ -31,53 +31,77 @@ let BIN_USERS = process.env.BIN_USERS || null;
 let BIN_BOOKS = process.env.BIN_BOOKS || null;
 
 // ── JSONBIN HELPERS ───────────────────────────────────────
+function jsonbinHeaders(extra = {}) {
+  return {
+    "Content-Type": "application/json",
+    "X-Master-Key": JSONBIN_KEY,
+    "X-Access-Key": JSONBIN_KEY,
+    "User-Agent": "StoryForge/1.0",
+    ...extra,
+  };
+}
+
 async function binGet(binId) {
   const r = await fetch(`${JSONBIN_URL}/b/${binId}/latest`, {
-    headers: { "X-Master-Key": JSONBIN_KEY }
+    headers: jsonbinHeaders(),
   });
-  const d = await r.json();
-  if (!r.ok) throw new Error(d.message || "JSONBin GET failed");
-  return d.record;
+  const text = await r.text();
+  if (!r.ok) throw new Error(`JSONBin GET failed (${r.status}): ${text}`);
+  return JSON.parse(text).record;
 }
 
 async function binSet(binId, data) {
   const r = await fetch(`${JSONBIN_URL}/b/${binId}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json", "X-Master-Key": JSONBIN_KEY },
-    body: JSON.stringify(data)
+    headers: jsonbinHeaders(),
+    body: JSON.stringify(data),
   });
-  const d = await r.json();
-  if (!r.ok) throw new Error(d.message || "JSONBin PUT failed");
-  return d.record;
+  const text = await r.text();
+  if (!r.ok) throw new Error(`JSONBin PUT failed (${r.status}): ${text}`);
+  return JSON.parse(text).record;
 }
 
 async function binCreate(name, initial) {
   const r = await fetch(`${JSONBIN_URL}/b`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "X-Master-Key": JSONBIN_KEY, "X-Bin-Name": name, "X-Bin-Private": "true" },
-    body: JSON.stringify(initial)
+    headers: jsonbinHeaders({ "X-Bin-Name": name, "X-Bin-Private": "true" }),
+    body: JSON.stringify(initial),
   });
-  const d = await r.json();
-  if (!r.ok) throw new Error(d.message || "JSONBin CREATE failed");
-  return d.metadata.id;
+  const text = await r.text();
+  if (!r.ok) throw new Error(`JSONBin CREATE failed (${r.status}): ${text}`);
+  return JSON.parse(text).metadata.id;
 }
 
 // ── INIT BINS ─────────────────────────────────────────────
 async function initBins() {
+  console.log("🔄 Initializing JSONBin...");
+  console.log("   JSONBIN_KEY set:", !!JSONBIN_KEY);
+  console.log("   BIN_USERS env:", process.env.BIN_USERS || "not set");
+  console.log("   BIN_BOOKS env:", process.env.BIN_BOOKS || "not set");
   try {
     if (!BIN_USERS) {
+      console.log("   Creating users bin...");
       BIN_USERS = await binCreate("storyforge-users", { users: [] });
       console.log("✅ Created users bin:", BIN_USERS);
       console.log("👉 Add to Render env: BIN_USERS=" + BIN_USERS);
+    } else {
+      // verify it works
+      await binGet(BIN_USERS);
+      console.log("✅ Users bin OK:", BIN_USERS);
     }
     if (!BIN_BOOKS) {
+      console.log("   Creating books bin...");
       BIN_BOOKS = await binCreate("storyforge-books", { books: [] });
       console.log("✅ Created books bin:", BIN_BOOKS);
       console.log("👉 Add to Render env: BIN_BOOKS=" + BIN_BOOKS);
+    } else {
+      await binGet(BIN_BOOKS);
+      console.log("✅ Books bin OK:", BIN_BOOKS);
     }
-    console.log("✅ JSONBin ready. Users:", BIN_USERS, "Books:", BIN_BOOKS);
+    console.log("✅ JSONBin fully ready.");
   } catch (e) {
-    console.error("❌ JSONBin init failed:", e.message);
+    console.error("❌ JSONBin init FAILED:", e.message);
+    console.error("   This means DB calls will fail. Check JSONBIN_KEY and bin IDs.");
   }
 }
 
