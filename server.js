@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const crypto = require("crypto");
+const { Resend } = require("resend");
 
 const app = express();
 app.use(cors());
@@ -9,10 +10,16 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.static("public"));
 
 // ── CONFIG ────────────────────────────────────────────────
-const JSONBIN_KEY = process.env.JSONBIN_KEY || "$2a$10$Lqc8f5pMIW0fmsjFVvOJlu2/KeVbio0LHWcMZv.WorXnw6W4TFizS";
-const JWT_SECRET  = process.env.JWT_SECRET  || "storyforge-secret-2024";
-const ADMIN_KEY   = process.env.ADMIN_KEY   || "storyforge-admin-2024";
-const JSONBIN_URL = "https://api.jsonbin.io/v3";
+const JSONBIN_KEY  = process.env.JSONBIN_KEY  || "$2a$10$Lqc8f5pMIW0fmsjFVvOJlu2/KeVbio0LHWcMZv.WorXnw6W4TFizS";
+const JWT_SECRET   = process.env.JWT_SECRET   || "storyforge-secret-2024";
+const ADMIN_KEY    = process.env.ADMIN_KEY    || "storyforge-admin-2024";
+const ADMIN_EMAIL  = process.env.ADMIN_EMAIL  || "admin@storyforge.ai"; // kde přijmeš PRO requesty
+const RESEND_KEY   = process.env.RESEND_KEY   || "re_ZvxyMchH_CrYrT2JWBM5Cv1kx8bHr5rsL";
+const FROM_EMAIL   = process.env.FROM_EMAIL   || "onboarding@resend.dev"; // testovací sender
+const APP_URL      = process.env.APP_URL      || "https://storyforge.onrender.com";
+const JSONBIN_URL  = "https://api.jsonbin.io/v3";
+
+const resend = new Resend(RESEND_KEY);
 
 // Bin IDs — vytvoří se automaticky při prvním spuštění
 let BIN_USERS = process.env.BIN_USERS || null;
@@ -313,29 +320,48 @@ app.delete("/api/admin/subscribe/:email", adminMw, async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════════
+// EMAIL HELPERS
+// ══════════════════════════════════════════════════════════
+async function sendEmail({ to, subject, html }) {
+  try {
+    const r = await resend.emails.send({ from: FROM_EMAIL, to, subject, html });
+    console.log(`📧 Email sent to ${to}: ${subject}`);
+    return r;
+  } catch (e) {
+    console.error(`❌ Email failed to ${to}:`, e.message);
+    throw e;
+  }
+}
+
+// ══════════════════════════════════════════════════════════
 // PASSWORD RESET
 // ══════════════════════════════════════════════════════════
-
-// In-memory reset tokens (survives restart only — good enough for 1hr window)
-const resetTokens = new Map(); // token -> { email, expires }
+const resetTokens = new Map();
 
 app.post("/api/auth/reset-request", async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: "Email required" });
-  // Always respond 200 so we don't leak which emails exist
-  res.json({ ok: true });
+  res.json({ ok: true }); // always 200 — don't reveal if email exists
   try {
     const db = await binGet(BIN_USERS);
     const user = db.users.find(u => u.email === email.toLowerCase().trim());
-    if (!user) return; // silent — don't reveal if email exists
+    if (!user) return;
     const token = crypto.randomBytes(32).toString("hex");
-    const expires = Date.now() + 60 * 60 * 1000; // 1 hour
-    resetTokens.set(token, { email: user.email, expires });
-    // Log reset link to console (use proper email service in production)
-    const resetUrl = `${req.protocol}://${req.get("host")}?reset=${token}`;
-    console.log(`\n🔑 PASSWORD RESET for ${user.email}:\n   ${resetUrl}\n`);
-    // TODO: Send via email service (SendGrid, Resend, etc.)
-    // For now the link appears in server logs — admin can forward it manually
+    resetTokens.set(token, { email: user.email, expires: Date.now() + 60 * 60 * 1000 });
+    const resetUrl = `${APP_URL}?reset=${token}`;
+    await sendEmail({
+      to: user.email,
+      subject: "StoryForge — reset hesla",
+      html: `
+        <div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:32px;background:#0a0a0f;color:#e8e8f0;border-radius:12px">
+          <h1 style="font-size:22px;margin-bottom:8px">🔑 Reset hesla</h1>
+          <p style="color:#9898b8;margin-bottom:24px">Ahoj <b style="color:#e8e8f0">${user.name}</b>, dostali jsme žádost o reset hesla pro tvůj účet.</p>
+          <a href="${resetUrl}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#8b5cf6);color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;font-size:15px">Resetovat heslo →</a>
+          <p style="color:#5a5a80;font-size:12px;margin-top:24px">Odkaz je platný <b>1 hodinu</b>. Pokud jsi o reset nežádal/a, tento email ignoruj.</p>
+          <hr style="border:none;border-top:1px solid #2a2a40;margin:24px 0">
+          <p style="color:#5a5a80;font-size:11px">StoryForge AI · Pokud tlačítko nefunguje, zkopíruj tento odkaz: ${resetUrl}</p>
+        </div>`
+    });
   } catch (e) {
     console.error("Reset request error:", e.message);
   }
@@ -366,12 +392,50 @@ app.post("/api/auth/reset-confirm", async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════════
-// PRO REQUEST (notifies admin via console log)
+// PRO REQUEST
 // ══════════════════════════════════════════════════════════
 app.post("/api/pro-request", async (req, res) => {
   const { email, name } = req.body;
-  console.log(`\n⭐ PRO REQUEST from ${name || "?"} <${email || "unknown"}> at ${new Date().toLocaleString("cs-CZ")}\n`);
   res.json({ ok: true });
+  console.log(`⭐ PRO REQUEST: ${name} <${email}>`);
+  try {
+    // Notify admin
+    await sendEmail({
+      to: ADMIN_EMAIL,
+      subject: `⭐ Nový PRO request — ${name || email}`,
+      html: `
+        <div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:32px;background:#0a0a0f;color:#e8e8f0;border-radius:12px">
+          <h1 style="font-size:20px;margin-bottom:16px">⭐ Nový PRO request</h1>
+          <table style="width:100%;border-collapse:collapse;font-size:14px">
+            <tr><td style="color:#9898b8;padding:6px 0">Jméno:</td><td><b>${name || "—"}</b></td></tr>
+            <tr><td style="color:#9898b8;padding:6px 0">Email:</td><td><b>${email || "—"}</b></td></tr>
+            <tr><td style="color:#9898b8;padding:6px 0">Čas:</td><td>${new Date().toLocaleString("cs-CZ")}</td></tr>
+          </table>
+          <p style="margin-top:20px;color:#9898b8;font-size:13px">Pro aktivaci přejdi na admin panel a přidej předplatné pro tento email.</p>
+          <a href="${APP_URL}/admin" style="display:inline-block;margin-top:12px;background:#7c3aed;color:#fff;text-decoration:none;padding:10px 20px;border-radius:8px;font-weight:700;font-size:13px">Otevřít admin panel →</a>
+        </div>`
+    });
+    // Confirm to user
+    if (email) {
+      await sendEmail({
+        to: email,
+        subject: "StoryForge — žádost o PRO přijata",
+        html: `
+          <div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:32px;background:#0a0a0f;color:#e8e8f0;border-radius:12px">
+            <h1 style="font-size:22px;margin-bottom:8px">⚡ Žádost přijata!</h1>
+            <p style="color:#9898b8;margin-bottom:16px">Ahoj <b style="color:#e8e8f0">${name || ""}</b>, tvoje žádost o PRO předplatné byla přijata.</p>
+            <div style="background:#12121a;border:1px solid #2a2a40;border-radius:10px;padding:16px;margin-bottom:20px">
+              <p style="margin:0;font-size:14px">✅ Přístup bude aktivován do <b>24 hodin</b><br>
+              📧 Po aktivaci dostaneš potvrzovací email<br>
+              💬 Otázky? Odpověz na tento email</p>
+            </div>
+            <p style="color:#5a5a80;font-size:12px">StoryForge AI — piš příběhy bez hranic</p>
+          </div>`
+      });
+    }
+  } catch (e) {
+    console.error("PRO request email error:", e.message);
+  }
 });
 
 // ══════════════════════════════════════════════════════════
