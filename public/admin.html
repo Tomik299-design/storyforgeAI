@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StoryForge — Admin</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0a0a0f;--surface:#12121a;--surface2:#1a1a26;--surface3:#22223a;
+    --border:#2a2a40;--text:#e8e8f0;--text2:#9898b8;--text3:#5a5a80;
+    --purple:#7c3aed;--purple2:#8b5cf6;--purple3:#a78bfa;
+    --green:#22c55e;--yellow:#f59e0b;--red:#ef4444;--blue:#3b82f6;
+    --r:10px;
+  }
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;min-height:100vh;}
+
+  /* LOGIN */
+  #login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;}
+  .login-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:36px 32px;width:100%;max-width:380px;text-align:center;}
+  .login-box h1{font-size:22px;margin-bottom:6px;}
+  .login-box p{color:var(--text2);font-size:13px;margin-bottom:24px;}
+  .input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 13px;color:var(--text);font-size:14px;outline:none;}
+  .input:focus{border-color:var(--purple2);}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 18px;border-radius:8px;border:none;cursor:pointer;font-size:13.5px;font-weight:600;transition:all .15s;}
+  .btn-primary{background:linear-gradient(135deg,var(--purple),var(--purple2));color:#fff;}
+  .btn-primary:hover{filter:brightness(1.1);}
+  .btn-danger{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3);}
+  .btn-danger:hover{background:rgba(239,68,68,.25);}
+  .btn-success{background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.3);}
+  .btn-success:hover{background:rgba(34,197,94,.25);}
+  .btn-sm{padding:6px 12px;font-size:12px;}
+
+  /* LAYOUT */
+  #app{display:none;}
+  .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;}
+  .topbar-logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;}
+  .topbar-logo span{background:linear-gradient(135deg,var(--purple2),var(--purple3));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  .admin-badge{background:rgba(239,68,68,.2);color:var(--red);border:1px solid rgba(239,68,68,.3);font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;}
+  .main{padding:28px;max-width:1300px;margin:0 auto;}
+
+  /* TABS */
+  .tabs{display:flex;gap:4px;margin-bottom:28px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:5px;width:fit-content;}
+  .tab{padding:8px 18px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text2);transition:all .15s;}
+  .tab.active{background:var(--purple);color:#fff;}
+  .tab:hover:not(.active){background:var(--surface2);color:var(--text);}
+
+  /* STAT CARDS */
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:28px;}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;}
+  .stat-card .stat-label{font-size:12px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
+  .stat-card .stat-value{font-size:30px;font-weight:800;line-height:1;}
+  .stat-card .stat-sub{font-size:11.5px;color:var(--text2);margin-top:5px;}
+  .stat-green .stat-value{color:var(--green);}
+  .stat-purple .stat-value{color:var(--purple3);}
+  .stat-yellow .stat-value{color:var(--yellow);}
+  .stat-blue .stat-value{color:var(--blue);}
+
+  /* TABLE */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+  .card-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+  .card-header h3{font-size:15px;font-weight:700;}
+  table{width:100%;border-collapse:collapse;}
+  th{padding:11px 16px;text-align:left;font-size:11.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);background:var(--surface2);}
+  td{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  tr:hover td{background:rgba(255,255,255,.02);}
+  .badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;}
+  .badge-pro{background:rgba(245,158,11,.15);color:var(--yellow);border:1px solid rgba(245,158,11,.3);}
+  .badge-free{background:var(--surface3);color:var(--text3);}
+  .badge-green{background:rgba(34,197,94,.15);color:var(--green);}
+  .badge-red{background:rgba(239,68,68,.15);color:var(--red);}
+
+  /* MODAL */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:100;display:none;align-items:center;justify-content:center;padding:20px;}
+  .modal.open{display:flex;}
+  .modal-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;width:100%;max-width:440px;position:relative;}
+  .modal-box h3{font-size:17px;font-weight:700;margin-bottom:16px;}
+  .form-row{margin-bottom:14px;}
+  .form-row label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px;}
+  .month-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+  .month-btn{padding:7px 14px;border-radius:7px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;font-size:13px;font-weight:600;transition:all .15s;}
+  .month-btn:hover,.month-btn.sel{border-color:var(--purple2);color:var(--purple3);background:rgba(139,92,246,.1);}
+
+  /* BOOK DETAIL MODAL */
+  .book-detail{max-width:680px;max-height:80vh;overflow-y:auto;}
+  .book-detail-chapter{background:var(--surface2);border-radius:8px;padding:14px;margin-bottom:10px;}
+  .book-detail-chapter h4{font-size:13px;font-weight:700;margin-bottom:6px;color:var(--purple3);}
+  .book-detail-chapter p{font-size:12.5px;color:var(--text2);line-height:1.6;white-space:pre-wrap;}
+
+  /* MISC */
+  .empty{text-align:center;padding:48px 20px;color:var(--text3);}
+  .empty .empty-icon{font-size:36px;margin-bottom:10px;}
+  .search-input{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px;outline:none;width:220px;}
+  .search-input:focus{border-color:var(--purple2);}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--surface3);border:1px solid var(--border);border-radius:10px;padding:10px 20px;font-size:13px;z-index:999;opacity:0;transition:opacity .2s;}
+  .toast.show{opacity:1;}
+  .refresh-btn{color:var(--text3);cursor:pointer;font-size:12px;display:flex;align-items:center;gap:4px;}
+  .refresh-btn:hover{color:var(--text);}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div style="font-size:36px;margin-bottom:12px">🔐</div>
+    <h1>Admin Panel</h1>
+    <p>StoryForge — přístup jen pro administrátory</p>
+    <input class="input" type="password" id="key-input" placeholder="Admin klíč..." style="margin-bottom:12px" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="btn btn-primary" style="width:100%" onclick="doLogin()">Přihlásit se →</button>
+    <p id="login-err" style="color:var(--red);font-size:12px;margin-top:10px;display:none">Špatný klíč</p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-logo">
+      <span>StoryForge</span>
+      <span class="admin-badge">ADMIN</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px">
+      <span class="refresh-btn" onclick="loadAll()">↻ Obnovit</span>
+      <span style="font-size:12px;color:var(--text3)" id="last-updated"></span>
+      <button class="btn btn-sm" style="background:var(--surface2);color:var(--text2);border:1px solid var(--border)" onclick="adminLogout()">Odhlásit</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- STATS -->
+    <div class="stats-grid" id="stats-grid">
+      <div class="stat-card"><div class="stat-label">Uživatelé</div><div class="stat-value">—</div></div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('users')">👥 Uživatelé</div>
+      <div class="tab" onclick="switchTab('books')">📚 Knihy</div>
+      <div class="tab" onclick="switchTab('subs')">⭐ Předplatné</div>
+    </div>
+
+    <!-- USERS TAB -->
+    <div id="tab-users">
+      <div class="card">
+        <div class="card-header">
+          <h3>Uživatelé</h3>
+          <input class="search-input" placeholder="Hledat email / jméno..." oninput="filterUsers(this.value)">
+        </div>
+        <table>
+          <thead><tr><th>Jméno</th><th>Email</th><th>Plán</th><th>Knihy</th><th>Registrace</th><th>Poslední aktivita</th><th>Akce</th></tr></thead>
+          <tbody id="users-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- BOOKS TAB -->
+    <div id="tab-books" style="display:none">
+      <div class="card">
+        <div class="card-header">
+          <h3>Vygenerované knihy</h3>
+          <input class="search-input" placeholder="Hledat název / autor..." oninput="filterBooks(this.value)">
+        </div>
+        <table>
+          <thead><tr><th>Název</th><th>Žánr</th><th>Autor</th><th>Email</th><th>Vytvořeno</th><th>Akce</th></tr></thead>
+          <tbody id="books-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SUBSCRIPTIONS TAB -->
+    <div id="tab-subs" style="display:none">
+      <div class="card">
+        <div class="card-header">
+          <h3>Předplatné</h3>
+          <button class="btn btn-primary btn-sm" onclick="openSubModal()">+ Přidat předplatné</button>
+        </div>
+        <table>
+          <thead><tr><th>Email</th><th>Měsíce</th><th>Aktivováno</th><th>Platí do</th><th>Poznámka</th><th>Stav</th><th>Akce</th></tr></thead>
+          <tbody id="subs-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD SUBSCRIPTION MODAL -->
+<div class="modal" id="sub-modal" onclick="if(event.target===this)closeSubModal()">
+  <div class="modal-box">
+    <h3>➕ Přidat PRO předplatné</h3>
+    <div class="form-row">
+      <label>Email uživatele</label>
+      <input class="input" id="sub-email" placeholder="email@example.com">
+    </div>
+    <div class="form-row">
+      <label>Počet měsíců</label>
+      <div class="month-btns">
+        <div class="month-btn sel" data-m="1" onclick="selMonth(1)">1 měs.</div>
+        <div class="month-btn" data-m="3" onclick="selMonth(3)">3 měs.</div>
+        <div class="month-btn" data-m="6" onclick="selMonth(6)">6 měs.</div>
+        <div class="month-btn" data-m="12" onclick="selMonth(12)">12 měs.</div>
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Poznámka (nepovinné)</label>
+      <input class="input" id="sub-note" placeholder="např. platba hotovost, promo...">
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px">
+      <button class="btn btn-primary" style="flex:1" onclick="submitSub()">✅ Aktivovat PRO</button>
+      <button class="btn" style="background:var(--surface2);color:var(--text2);border:1px solid var(--border)" onclick="closeSubModal()">Zrušit</button>
+    </div>
+  </div>
+</div>
+
+<!-- BOOK DETAIL MODAL -->
+<div class="modal" id="book-modal" onclick="if(event.target===this)closeBookModal()">
+  <div class="modal-box book-detail">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h3 id="book-modal-title">Název knihy</h3>
+      <button style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer" onclick="closeBookModal()">×</button>
+    </div>
+    <div id="book-modal-meta" style="color:var(--text2);font-size:12.5px;margin-bottom:16px"></div>
+    <div id="book-modal-body"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let adminKey='';
+let allUsers=[], allBooks=[], allSubs=[];
+let selectedMonths=1;
+let currentTab='users';
+
+// ── AUTH ──────────────────────────────────────────────────
+function doLogin(){
+  const key=document.getElementById('key-input').value.trim();
+  if(!key){return;}
+  adminKey=key;
+  fetch('/api/admin/stats',{headers:{'x-admin-key':key}})
+    .then(r=>r.json())
+    .then(d=>{
+      if(d.error){document.getElementById('login-err').style.display='block';adminKey='';return;}
+      document.getElementById('login-screen').style.display='none';
+      document.getElementById('app').style.display='block';
+      loadAll();
+    })
+    .catch(()=>{document.getElementById('login-err').style.display='block';adminKey='';});
+}
+function adminLogout(){adminKey='';document.getElementById('app').style.display='none';document.getElementById('login-screen').style.display='flex';}
+
+// ── LOAD DATA ─────────────────────────────────────────────
+async function loadAll(){
+  const h={'x-admin-key':adminKey};
+  try{
+    const [stats,users,books,subs]=await Promise.all([
+      fetch('/api/admin/stats',{headers:h}).then(r=>r.json()),
+      fetch('/api/admin/users',{headers:h}).then(r=>r.json()),
+      fetch('/api/admin/books',{headers:h}).then(r=>r.json()),
+      fetch('/api/admin/subscriptions',{headers:h}).then(r=>r.json()),
+    ]);
+    allUsers=users; allBooks=books; allSubs=subs;
+    renderStats(stats);
+    renderUsers(users);
+    renderBooks(books);
+    renderSubs(subs);
+    document.getElementById('last-updated').textContent='Aktualizováno '+new Date().toLocaleTimeString('cs-CZ');
+  }catch(e){toast('Chyba načítání: '+e.message,'err');}
+}
+
+// ── STATS ─────────────────────────────────────────────────
+function renderStats(s){
+  document.getElementById('stats-grid').innerHTML=`
+    <div class="stat-card stat-purple"><div class="stat-label">Celkem uživatelů</div><div class="stat-value">${s.totalUsers}</div><div class="stat-sub">${s.freeUsers} free · ${s.proUsers} PRO</div></div>
+    <div class="stat-card stat-yellow"><div class="stat-label">Aktivní předplatné</div><div class="stat-value">${s.activeSubscriptions}</div><div class="stat-sub">${s.proUsers} PRO uživatelů</div></div>
+    <div class="stat-card stat-green"><div class="stat-label">Celkem knih</div><div class="stat-value">${s.totalBooks}</div><div class="stat-sub">${s.totalGenerations} generování</div></div>
+    <div class="stat-card stat-blue"><div class="stat-label">Návštěvy</div><div class="stat-value">${s.pageViews}</div><div class="stat-sub">unikátních přihlášení</div></div>
+    <div class="stat-card stat-green"><div class="stat-label">Příjmy (celkem)</div><div class="stat-value">${s.revenue.toLocaleString('cs-CZ')}</div><div class="stat-sub">Kč ze všech předplatných</div></div>`;
+}
+
+// ── USERS ─────────────────────────────────────────────────
+function renderUsers(users){
+  const tb=document.getElementById('users-tbody');
+  if(!users.length){tb.innerHTML='<tr><td colspan="7"><div class="empty"><div class="empty-icon">👥</div>Zatím žádní uživatelé</div></td></tr>';return;}
+  tb.innerHTML=users.map(u=>`
+    <tr>
+      <td><b>${esc(u.name)}</b></td>
+      <td style="color:var(--text2)">${esc(u.email)}</td>
+      <td>${u.isPro?'<span class="badge badge-pro">⭐ PRO</span>':'<span class="badge badge-free">Free</span>'}</td>
+      <td>${u.bookCount||0}</td>
+      <td style="color:var(--text3);font-size:12px">${fmtDate(u.firstSeen)}</td>
+      <td style="color:var(--text3);font-size:12px">${fmtDate(u.lastSeen)}</td>
+      <td>
+        ${u.isPro
+          ?`<button class="btn btn-danger btn-sm" onclick="revokePro('${esc(u.email)}')">Odebrat PRO</button>`
+          :`<button class="btn btn-success btn-sm" onclick="quickSub('${esc(u.email)}')">+ PRO</button>`
+        }
+      </td>
+    </tr>`).join('');
+}
+function filterUsers(q){
+  const f=q.toLowerCase();
+  renderUsers(allUsers.filter(u=>(u.name||'').toLowerCase().includes(f)||(u.email||'').toLowerCase().includes(f)));
+}
+
+// ── BOOKS ─────────────────────────────────────────────────
+function renderBooks(books){
+  const tb=document.getElementById('books-tbody');
+  if(!books.length){tb.innerHTML='<tr><td colspan="6"><div class="empty"><div class="empty-icon">📚</div>Zatím žádné knihy</div></td></tr>';return;}
+  tb.innerHTML=books.map((b,i)=>`
+    <tr>
+      <td><b>${esc(b.title||'—')}</b></td>
+      <td style="color:var(--text2)">${esc(b.genre||'—')}</td>
+      <td>${esc(b.author||'—')}</td>
+      <td style="color:var(--text3);font-size:12px">${esc(b.email||'—')}</td>
+      <td style="color:var(--text3);font-size:12px">${fmtDate(b.createdAt)}</td>
+      <td><button class="btn btn-sm" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2)" onclick="openBook(${i})">📖 Otevřít</button></td>
+    </tr>`).join('');
+}
+function filterBooks(q){
+  const f=q.toLowerCase();
+  renderBooks(allBooks.filter(b=>(b.title||'').toLowerCase().includes(f)||(b.author||'').toLowerCase().includes(f)||(b.email||'').toLowerCase().includes(f)));
+}
+function openBook(idx){
+  const b=allBooks[idx];
+  document.getElementById('book-modal-title').textContent=b.title||'Bez názvu';
+  document.getElementById('book-modal-meta').innerHTML=`
+    <span style="margin-right:12px">📧 ${esc(b.email||'—')}</span>
+    <span style="margin-right:12px">🎭 ${esc(b.genre||'—')}</span>
+    <span>📅 ${fmtDate(b.createdAt)}</span>`;
+  const body=document.getElementById('book-modal-body');
+  if(b.chapters&&b.chapters.length){
+    body.innerHTML=b.chapters.map(c=>`
+      <div class="book-detail-chapter">
+        <h4>Kapitola ${c.number}: ${esc(c.title||'')}</h4>
+        <p>${esc((c.content||'').slice(0,1200))}${(c.content||'').length>1200?'\n\n[... zkráceno ...]':''}</p>
+      </div>`).join('');
+  }else{
+    body.innerHTML='<p style="color:var(--text3)">Obsah knihy není k dispozici.</p>';
+  }
+  document.getElementById('book-modal').classList.add('open');
+}
+function closeBookModal(){document.getElementById('book-modal').classList.remove('open');}
+
+// ── SUBSCRIPTIONS ─────────────────────────────────────────
+function renderSubs(subs){
+  const tb=document.getElementById('subs-tbody');
+  if(!subs.length){tb.innerHTML='<tr><td colspan="7"><div class="empty"><div class="empty-icon">⭐</div>Zatím žádné předplatné</div></td></tr>';return;}
+  tb.innerHTML=subs.map(s=>{
+    const active=s.active&&new Date(s.expiresAt)>new Date();
+    return `<tr>
+      <td><b>${esc(s.email)}</b></td>
+      <td>${s.months} měs.</td>
+      <td style="color:var(--text3);font-size:12px">${fmtDate(s.activatedAt)}</td>
+      <td style="font-size:12px">${fmtDate(s.expiresAt)}</td>
+      <td style="color:var(--text3)">${esc(s.note||'—')}</td>
+      <td>${active?'<span class="badge badge-green">Aktivní</span>':'<span class="badge badge-red">Vypršelo</span>'}</td>
+      <td>${active?`<button class="btn btn-danger btn-sm" onclick="revokePro('${esc(s.email)}')">Zrušit</button>`:'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── SUBSCRIPTION MODAL ────────────────────────────────────
+function openSubModal(prefillEmail=''){
+  document.getElementById('sub-email').value=prefillEmail;
+  document.getElementById('sub-note').value='';
+  selMonth(1);
+  document.getElementById('sub-modal').classList.add('open');
+}
+function closeSubModal(){document.getElementById('sub-modal').classList.remove('open');}
+function quickSub(email){openSubModal(email);}
+function selMonth(m){
+  selectedMonths=m;
+  document.querySelectorAll('.month-btn').forEach(b=>{
+    b.classList.toggle('sel',parseInt(b.dataset.m)===m);
+  });
+}
+async function submitSub(){
+  const email=document.getElementById('sub-email').value.trim();
+  const note=document.getElementById('sub-note').value.trim();
+  if(!email){toast('Zadej email','err');return;}
+  try{
+    const r=await fetch('/api/admin/subscribe',{
+      method:'POST',headers:{'Content-Type':'application/json','x-admin-key':adminKey},
+      body:JSON.stringify({email,months:selectedMonths,note})
+    });
+    const d=await r.json();
+    if(d.error){toast('Chyba: '+d.error,'err');return;}
+    closeSubModal();
+    toast('✅ PRO aktivováno pro '+email+' na '+selectedMonths+' měs. Platí do '+fmtDate(d.expiresAt));
+    loadAll();
+  }catch(e){toast('Chyba: '+e.message,'err');}
+}
+async function revokePro(email){
+  if(!confirm('Opravdu odebrat PRO pro '+email+'?'))return;
+  await fetch('/api/admin/subscribe/'+encodeURIComponent(email),{method:'DELETE',headers:{'x-admin-key':adminKey}});
+  toast('PRO odebráno pro '+email);
+  loadAll();
+}
+
+// ── TABS ──────────────────────────────────────────────────
+function switchTab(tab){
+  currentTab=tab;
+  ['users','books','subs'].forEach(t=>{
+    document.getElementById('tab-'+t).style.display=t===tab?'block':'none';
+  });
+  document.querySelectorAll('.tab').forEach((el,i)=>{
+    el.classList.toggle('active',['users','books','subs'][i]===tab);
+  });
+}
+
+// ── UTILS ─────────────────────────────────────────────────
+function fmtDate(s){if(!s)return'—';const d=new Date(s);return d.toLocaleDateString('cs-CZ')+' '+d.toLocaleTimeString('cs-CZ',{hour:'2-digit',minute:'2-digit'});}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function toast(msg,type){
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  el.style.borderColor=type==='err'?'rgba(239,68,68,.4)':'rgba(34,197,94,.3)';
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),3500);
+}
+
+document.getElementById('key-input').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+</script>
+</body>
+</html>
