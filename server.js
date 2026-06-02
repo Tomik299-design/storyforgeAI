@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const crypto = require("crypto");
-const { Resend } = require("resend");
+const nodemailer = require("nodemailer");
 
 const app = express();
 app.use(cors());
@@ -13,13 +13,18 @@ app.use(express.static("public"));
 const JSONBIN_KEY  = process.env.JSONBIN_KEY  || "$2a$10$Lqc8f5pMIW0fmsjFVvOJlu2/KeVbio0LHWcMZv.WorXnw6W4TFizS";
 const JWT_SECRET   = process.env.JWT_SECRET   || "storyforge-secret-2024";
 const ADMIN_KEY    = process.env.ADMIN_KEY    || "storyforge-admin-2024";
-const ADMIN_EMAIL  = process.env.ADMIN_EMAIL  || "admin@storyforge.ai"; // kde přijmeš PRO requesty
-const RESEND_KEY   = process.env.RESEND_KEY   || "re_ZvxyMchH_CrYrT2JWBM5Cv1kx8bHr5rsL";
-const FROM_EMAIL   = process.env.FROM_EMAIL   || "onboarding@resend.dev"; // testovací sender
+const ADMIN_EMAIL  = process.env.ADMIN_EMAIL  || "storyforgeai26@gmail.com";
+const GMAIL_USER   = process.env.GMAIL_USER   || "storyforgeai26@gmail.com";
+const GMAIL_PASS   = process.env.GMAIL_PASS   || "uhuubojzbalpLGVW".toLowerCase().replace(/(.{4})/g,"$1 ").trim();
 const APP_URL      = process.env.APP_URL      || "https://storyforge.onrender.com";
 const JSONBIN_URL  = "https://api.jsonbin.io/v3";
 
-const resend = new Resend(RESEND_KEY);
+// ── GMAIL SMTP ────────────────────────────────────────────
+const mailer = nodemailer.createTransport({
+  service: "gmail",
+  auth: { user: GMAIL_USER, pass: GMAIL_PASS },
+});
+
 
 // Bin IDs — vytvoří se automaticky při prvním spuštění
 let BIN_USERS = process.env.BIN_USERS || null;
@@ -323,14 +328,14 @@ app.delete("/api/admin/subscribe/:email", adminMw, async (req, res) => {
 // EMAIL HELPERS
 // ══════════════════════════════════════════════════════════
 async function sendEmail({ to, subject, html }) {
-  try {
-    const r = await resend.emails.send({ from: FROM_EMAIL, to, subject, html });
-    console.log(`📧 Email sent to ${to}: ${subject}`);
-    return r;
-  } catch (e) {
-    console.error(`❌ Email failed to ${to}:`, e.message);
-    throw e;
-  }
+  const info = await mailer.sendMail({
+    from: `"StoryForge AI" <${GMAIL_USER}>`,
+    to,
+    subject,
+    html,
+  });
+  console.log(`📧 Email sent to ${to}: ${subject} (id: ${info.messageId})`);
+  return info;
 }
 
 // ══════════════════════════════════════════════════════════
