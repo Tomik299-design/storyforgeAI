@@ -327,7 +327,7 @@ select.input{cursor:pointer;}
             <span onclick="togglePw()" id="pw-toggle" style="position:absolute;right:11px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:13px;color:var(--text3);">👁️</span>
           </div>
         </div>
-        <div id="auth-forgot" class="auth-forgot" onclick="toast('Reset hesla – brzy dostupné','info')">Zapomenuté heslo?</div>
+        <div id="auth-forgot" class="auth-forgot" onclick="showResetModal()">Zapomenuté heslo?</div>
         <div class="auth-error" id="auth-error"></div>
         <button class="btn btn-primary" style="width:100%;justify-content:center;padding:13px;font-size:14.5px;" id="auth-submit-btn" onclick="authSubmit()">Přihlásit se →</button>
         <button class="btn btn-outline" style="width:100%;justify-content:center;font-size:13px;" id="auth-demo-btn" onclick="quickLogin('demo')">🎭 Vyzkoušet Free demo</button>
@@ -1345,8 +1345,24 @@ function renderNavRecent(){
   }).join('');
 }
 
-function showUpgradeModal(){document.getElementById('upgrade-modal').style.display='flex';}
+function showUpgradeModal(){
+  document.getElementById('upgrade-modal').style.display='flex';
+  document.getElementById('upgrade-default').style.display='block';
+  document.getElementById('upgrade-sent').style.display='none';
+}
 function closeUpgradeModal(){document.getElementById('upgrade-modal').style.display='none';}
+
+async function requestPro(){
+  const btn=document.querySelector('#upgrade-default .btn-primary');
+  btn.disabled=true; btn.textContent='Odesílám...';
+  try{
+    await apiFetch('/api/pro-request',{method:'POST',body:JSON.stringify({email:state.user?.email,name:state.user?.name})});
+  }catch(e){ /* i pokud selže server, ukážeme potvrzení */ }
+  document.getElementById('upgrade-email-display').textContent=state.user?.email||'tvůj email';
+  document.getElementById('upgrade-default').style.display='none';
+  document.getElementById('upgrade-sent').style.display='block';
+  btn.disabled=false; btn.textContent='⚡ Zakoupit PRO — 199 Kč/měs';
+}
 function activatePro(months){
   const m=parseInt(months)||1;
   const expires=new Date();
@@ -1448,47 +1464,162 @@ async function generateIdea(){
 }
 
 // ══════════════════════════════════════════════════════════
-// INIT
 // ══════════════════════════════════════════════════════════
+// PASSWORD RESET
+// ══════════════════════════════════════════════════════════
+function showResetModal(){
+  document.getElementById('reset-modal').style.display='flex';
+  document.getElementById('reset-step1').style.display='block';
+  document.getElementById('reset-step2').style.display='none';
+  document.getElementById('reset-step3').style.display='none';
+  document.getElementById('reset-error').classList.remove('show');
+  document.getElementById('reset-email').value='';
+}
+function closeResetModal(){document.getElementById('reset-modal').style.display='none';}
+
+async function sendResetEmail(){
+  const email=document.getElementById('reset-email').value.trim();
+  const errEl=document.getElementById('reset-error');
+  errEl.classList.remove('show');
+  if(!email){errEl.textContent='⚠️ Zadej email';errEl.classList.add('show');return;}
+  const btn=document.getElementById('reset-send-btn');
+  btn.disabled=true;btn.textContent='Odesílám...';
+  try{
+    await fetch('/api/auth/reset-request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+    // Always show confirmation regardless of whether email exists (security)
+    document.getElementById('reset-email-display').textContent=email;
+    document.getElementById('reset-step1').style.display='none';
+    document.getElementById('reset-step2').style.display='block';
+  }catch(e){
+    errEl.textContent='⚠️ Chyba serveru, zkus to znovu';errEl.classList.add('show');
+  }
+  btn.disabled=false;btn.textContent='Odeslat reset odkaz →';
+}
+
+async function confirmReset(){
+  const pw=document.getElementById('reset-newpw').value;
+  const pw2=document.getElementById('reset-newpw2').value;
+  const errEl=document.getElementById('reset-error3');
+  errEl.classList.remove('show');
+  if(pw.length<6){errEl.textContent='⚠️ Heslo musí mít alespoň 6 znaků';errEl.classList.add('show');return;}
+  if(pw!==pw2){errEl.textContent='⚠️ Hesla se neshodují';errEl.classList.add('show');return;}
+  const token=new URLSearchParams(window.location.search).get('reset');
+  if(!token){errEl.textContent='⚠️ Chybí reset token';errEl.classList.add('show');return;}
+  const btn=document.getElementById('reset-confirm-btn');
+  btn.disabled=true;btn.textContent='Ukládám...';
+  try{
+    await fetch('/api/auth/reset-confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,password:pw})});
+    closeResetModal();
+    // Clean URL
+    window.history.replaceState({},'',window.location.pathname);
+    toast('✅ Heslo bylo změněno! Přihlas se.','ok');
+  }catch(e){
+    errEl.textContent='⚠️ '+e.message;errEl.classList.add('show');
+  }
+  btn.disabled=false;btn.textContent='Uložit nové heslo →';
+}
+
+// Check for reset token in URL on page load
+function checkResetToken(){
+  const token=new URLSearchParams(window.location.search).get('reset');
+  if(token){
+    document.getElementById('reset-modal').style.display='flex';
+    document.getElementById('reset-step1').style.display='none';
+    document.getElementById('reset-step2').style.display='none';
+    document.getElementById('reset-step3').style.display='block';
+  }
+}
+
+
 renderGenreGrid();renderLengthOpts();renderStyleGrid();renderChars();
 console.log('%c⚡ StoryForge Admin%c  —  zadej sf.help() pro seznam příkazů','background:#7c3aed;color:#fff;padding:3px 8px;border-radius:4px;font-weight:bold','color:#94a3b8');
+checkResetToken();
 tryAutoLogin();
 </script>
 <!-- UPGRADE MODAL -->
 <div class="upgrade-modal" id="upgrade-modal" style="display:none" onclick="if(event.target===this)closeUpgradeModal()">
   <div class="upgrade-box">
     <button class="close-btn" onclick="closeUpgradeModal()">×</button>
-    <div style="text-align:center;margin-bottom:4px">
-      <div style="font-size:32px">⚡</div>
-      <h2 style="font-size:20px;margin:6px 0 4px">Odemkni plný potenciál</h2>
-      <p style="font-size:13px;color:var(--text2)">S PRO plánem bez omezení — piš kolik chceš.</p>
-    </div>
-    <div class="plan-row">
-      <div class="plan-card">
-        <div class="free-badge">Free</div>
-        <div class="plan-price">0 Kč<span>/měs</span></div>
-        <ul class="plan-feat">
-          <li>Max 2 knihy celkem</li>
-          <li>Krátká a střední délka</li>
-          <li>AI chat asistent</li>
-          <li class="no">Dlouhé a epické romány</li>
-          <li class="no">Neomezené knihy</li>
-        </ul>
+    <!-- default view -->
+    <div id="upgrade-default">
+      <div style="text-align:center;margin-bottom:4px">
+        <div style="font-size:32px">⚡</div>
+        <h2 style="font-size:20px;margin:6px 0 4px">Odemkni plný potenciál</h2>
+        <p style="font-size:13px;color:var(--text2)">S PRO plánem bez omezení — piš kolik chceš.</p>
       </div>
-      <div class="plan-card pro">
-        <div class="pro-badge">⭐ PRO</div>
-        <div class="plan-price">199 Kč<span>/měs</span></div>
-        <ul class="plan-feat">
-          <li>Neomezené knihy</li>
-          <li>Všechny délky (až 25 kap.)</li>
-          <li>AI chat asistent</li>
-          <li>Prioritní generování</li>
-          <li>Komunita a sdílení</li>
-        </ul>
+      <div class="plan-row">
+        <div class="plan-card">
+          <div class="free-badge">Free</div>
+          <div class="plan-price">0 Kč<span>/měs</span></div>
+          <ul class="plan-feat">
+            <li>Max 2 knihy celkem</li>
+            <li>Krátká a střední délka</li>
+            <li>AI chat asistent</li>
+            <li class="no">Dlouhé a epické romány</li>
+            <li class="no">Neomezené knihy</li>
+          </ul>
+        </div>
+        <div class="plan-card pro">
+          <div class="pro-badge">⭐ PRO</div>
+          <div class="plan-price">199 Kč<span>/měs</span></div>
+          <ul class="plan-feat">
+            <li>Neomezené knihy</li>
+            <li>Všechny délky (až 25 kap.)</li>
+            <li>AI chat asistent</li>
+            <li>Prioritní generování</li>
+            <li>Komunita a sdílení</li>
+          </ul>
+        </div>
       </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:13px;font-size:15px" onclick="requestPro()">⚡ Zakoupit PRO — 199 Kč/měs</button>
     </div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:13px;font-size:15px" onclick="activatePro(1)">⚡ Aktivovat PRO — 199 Kč/měs</button>
-    <p style="text-align:center;font-size:11px;color:var(--text3);margin-top:10px">Demo: klikni výše pro simulaci PRO aktivace</p>
+    <!-- after request sent -->
+    <div id="upgrade-sent" style="display:none;text-align:center;padding:16px 0">
+      <div style="font-size:48px;margin-bottom:16px">✅</div>
+      <h2 style="font-size:20px;margin-bottom:10px">Žádost odeslána!</h2>
+      <p style="font-size:13.5px;color:var(--text2);line-height:1.7;margin-bottom:20px">
+        Tvoje žádost o PRO předplatné byla přijata.<br>
+        Admin tě kontaktuje na <b id="upgrade-email-display" style="color:var(--text)"></b><br>
+        a aktivuje přístup do <b style="color:var(--purple3)">24 hodin</b>.
+      </p>
+      <p style="font-size:12px;color:var(--text3)">Máš otázky? Napiš na <span style="color:var(--purple3)">admin@storyforge.ai</span></p>
+      <button class="btn" style="margin-top:16px;background:var(--surface2);border:1px solid var(--border);color:var(--text2)" onclick="closeUpgradeModal()">Zavřít</button>
+    </div>
+  </div>
+</div>
+
+<!-- PASSWORD RESET MODAL -->
+<div class="upgrade-modal" id="reset-modal" style="display:none" onclick="if(event.target===this)closeResetModal()">
+  <div class="upgrade-box" style="max-width:380px">
+    <button class="close-btn" onclick="closeResetModal()">×</button>
+    <div id="reset-step1">
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="font-size:32px;margin-bottom:8px">🔑</div>
+        <h2 style="font-size:18px;margin-bottom:6px">Reset hesla</h2>
+        <p style="font-size:13px;color:var(--text2)">Zadej svůj email a pošleme ti odkaz pro reset.</p>
+      </div>
+      <input class="input" id="reset-email" type="email" placeholder="tvůj@email.cz" style="width:100%;margin-bottom:12px">
+      <div class="auth-error" id="reset-error" style="margin-bottom:10px"></div>
+      <button class="btn btn-primary" id="reset-send-btn" style="width:100%;justify-content:center;padding:12px" onclick="sendResetEmail()">Odeslat reset odkaz →</button>
+    </div>
+    <div id="reset-step2" style="display:none;text-align:center;padding:8px 0">
+      <div style="font-size:48px;margin-bottom:14px">📧</div>
+      <h2 style="font-size:18px;margin-bottom:10px">Email odeslán!</h2>
+      <p style="font-size:13.5px;color:var(--text2);line-height:1.7;margin-bottom:6px">Zkontroluj svou schránku na<br><b id="reset-email-display" style="color:var(--text)"></b></p>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:20px">Odkaz je platný 1 hodinu. Zkontroluj i spam.</p>
+      <button class="btn" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2)" onclick="closeResetModal()">Zavřít</button>
+    </div>
+    <div id="reset-step3" style="display:none">
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="font-size:32px;margin-bottom:8px">🔐</div>
+        <h2 style="font-size:18px;margin-bottom:6px">Nové heslo</h2>
+        <p style="font-size:13px;color:var(--text2)">Zadej nové heslo pro svůj účet.</p>
+      </div>
+      <input class="input" id="reset-newpw" type="password" placeholder="Nové heslo (min. 6 znaků)" style="width:100%;margin-bottom:10px">
+      <input class="input" id="reset-newpw2" type="password" placeholder="Zopakuj heslo" style="width:100%;margin-bottom:14px">
+      <div class="auth-error" id="reset-error3" style="margin-bottom:10px"></div>
+      <button class="btn btn-primary" id="reset-confirm-btn" style="width:100%;justify-content:center;padding:12px" onclick="confirmReset()">Uložit nové heslo →</button>
+    </div>
   </div>
 </div>
 </body>
