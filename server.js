@@ -313,6 +313,68 @@ app.delete("/api/admin/subscribe/:email", adminMw, async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════════
+// PASSWORD RESET
+// ══════════════════════════════════════════════════════════
+
+// In-memory reset tokens (survives restart only — good enough for 1hr window)
+const resetTokens = new Map(); // token -> { email, expires }
+
+app.post("/api/auth/reset-request", async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: "Email required" });
+  // Always respond 200 so we don't leak which emails exist
+  res.json({ ok: true });
+  try {
+    const db = await binGet(BIN_USERS);
+    const user = db.users.find(u => u.email === email.toLowerCase().trim());
+    if (!user) return; // silent — don't reveal if email exists
+    const token = crypto.randomBytes(32).toString("hex");
+    const expires = Date.now() + 60 * 60 * 1000; // 1 hour
+    resetTokens.set(token, { email: user.email, expires });
+    // Log reset link to console (use proper email service in production)
+    const resetUrl = `${req.protocol}://${req.get("host")}?reset=${token}`;
+    console.log(`\n🔑 PASSWORD RESET for ${user.email}:\n   ${resetUrl}\n`);
+    // TODO: Send via email service (SendGrid, Resend, etc.)
+    // For now the link appears in server logs — admin can forward it manually
+  } catch (e) {
+    console.error("Reset request error:", e.message);
+  }
+});
+
+app.post("/api/auth/reset-confirm", async (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password) return res.status(400).json({ error: "Token and password required" });
+  if (password.length < 6) return res.status(400).json({ error: "Heslo musí mít alespoň 6 znaků" });
+  const entry = resetTokens.get(token);
+  if (!entry) return res.status(400).json({ error: "Neplatný nebo vypršelý reset odkaz" });
+  if (Date.now() > entry.expires) {
+    resetTokens.delete(token);
+    return res.status(400).json({ error: "Reset odkaz vypršel, požádej o nový" });
+  }
+  try {
+    const db = await binGet(BIN_USERS);
+    const user = db.users.find(u => u.email === entry.email);
+    if (!user) return res.status(404).json({ error: "Uživatel nenalezen" });
+    user.password = hashPwd(password);
+    await binSet(BIN_USERS, db);
+    resetTokens.delete(token);
+    console.log(`✅ Password reset completed for ${entry.email}`);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════
+// PRO REQUEST (notifies admin via console log)
+// ══════════════════════════════════════════════════════════
+app.post("/api/pro-request", async (req, res) => {
+  const { email, name } = req.body;
+  console.log(`\n⭐ PRO REQUEST from ${name || "?"} <${email || "unknown"}> at ${new Date().toLocaleString("cs-CZ")}\n`);
+  res.json({ ok: true });
+});
+
+// ══════════════════════════════════════════════════════════
 // MISTRAL AI PROXY
 // ══════════════════════════════════════════════════════════
 app.post("/api/claude", async (req, res) => {
