@@ -110,6 +110,25 @@ select.input{cursor:pointer;}
 .sidebar-upgrade p{font-size:11px;color:var(--text2);margin-bottom:9px;line-height:1.5;}
 .sidebar-user{padding:11px 14px;border-top:1px solid var(--border);display:flex;align-items:center;gap:9px;cursor:pointer;transition:background .15s;}
 .sidebar-user:hover{background:var(--surface2);}
+.pro-badge{display:inline-flex;align-items:center;gap:3px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-size:9.5px;font-weight:800;padding:2px 6px;border-radius:20px;letter-spacing:.5px;text-transform:uppercase;}
+.free-badge{display:inline-flex;align-items:center;background:var(--surface3);color:var(--text3);font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:20px;letter-spacing:.4px;text-transform:uppercase;}
+.upgrade-modal{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;}
+.upgrade-box{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:32px 28px;max-width:420px;width:100%;position:relative;}
+.upgrade-box .close-btn{position:absolute;top:14px;right:16px;background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;line-height:1;}
+.plan-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0;}
+.plan-card{border:1.5px solid var(--border);border-radius:14px;padding:18px 14px;text-align:center;cursor:pointer;transition:all .2s;}
+.plan-card.pro{border-color:#f59e0b;background:rgba(245,158,11,.07);}
+.plan-card .plan-price{font-size:26px;font-weight:800;margin:8px 0 4px;}
+.plan-card .plan-price span{font-size:13px;font-weight:400;color:var(--text2);}
+.plan-feat{font-size:12px;color:var(--text2);margin-top:10px;line-height:1.8;text-align:left;}
+.plan-feat li{list-style:none;padding-left:16px;position:relative;}
+.plan-feat li::before{content:'✓';position:absolute;left:0;color:#22c55e;}
+.plan-feat li.no::before{content:'✗';color:#ef4444;}
+.limit-bar{height:5px;background:var(--surface3);border-radius:100px;overflow:hidden;margin-top:5px;}
+.limit-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--purple2),var(--purple3));transition:width .5s;}
+.limit-fill.warn{background:linear-gradient(90deg,#f59e0b,#ef4444);}
+.locked-length{opacity:.45;pointer-events:none;position:relative;}
+.locked-length::after{content:'🔒 PRO';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#f59e0b;pointer-events:all;cursor:pointer;}
 .user-avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--purple),#4c1d95);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;}
 .user-name{font-size:12.5px;font-weight:600;}
 .user-email{font-size:10.5px;color:var(--text3);}
@@ -311,7 +330,8 @@ select.input{cursor:pointer;}
         <div id="auth-forgot" class="auth-forgot" onclick="toast('Reset hesla – brzy dostupné','info')">Zapomenuté heslo?</div>
         <div class="auth-error" id="auth-error"></div>
         <button class="btn btn-primary" style="width:100%;justify-content:center;padding:13px;font-size:14.5px;" id="auth-submit-btn" onclick="authSubmit()">Přihlásit se →</button>
-        <button class="btn btn-outline" style="width:100%;justify-content:center;font-size:13px;" id="auth-demo-btn" onclick="quickLogin('demo')">🎭 Vyzkoušet demo bez účtu</button>
+        <button class="btn btn-outline" style="width:100%;justify-content:center;font-size:13px;" id="auth-demo-btn" onclick="quickLogin('demo')">🎭 Vyzkoušet Free demo</button>
+        <button class="btn btn-outline" style="width:100%;justify-content:center;font-size:13px;border-color:#f59e0b;color:#f59e0b;" id="auth-pro-btn" onclick="quickLogin('pro')">⭐ Vyzkoušet PRO demo</button>
       </div>
 
       <div class="auth-switch" id="auth-switch">
@@ -351,10 +371,8 @@ select.input{cursor:pointer;}
       <div class="nav-section">Nedávno otevřené</div>
       <div id="nav-recent"></div>
     </div>
-    <div class="sidebar-upgrade">
-      <h4>Upgrade na PRO</h4>
-      <p>Neomezené knihy, delší kapitoly a žádné limity.</p>
-      <button class="btn btn-primary" style="width:100%;justify-content:center;font-size:12.5px;padding:8px;" onclick="toast('Brzy dostupné 🚀','info')">Upgradovat</button>
+    <div class="sidebar-upgrade" id="sidebar-plan-box">
+      <!-- rendered by renderPlanBox() -->
     </div>
     <div class="sidebar-user" onclick="logout()">
       <div class="user-avatar" id="user-avatar">T</div>
@@ -647,10 +665,10 @@ const GENRES=[
   {id:'mystery',l:'Mysteriózní',i:'🌫️',d:'Záhady, tajemno, nadpřirozeno'},
 ];
 const LENGTHS=[
-  {id:'short',l:'Krátká',ch:'5–10 kapitol',d:'Rychlé čtení'},
-  {id:'medium',l:'Střední',ch:'10–20 kapitol',d:'Víkendová četba'},
-  {id:'long',l:'Dlouhá',ch:'20–40 kapitol',d:'Plný příběh'},
-  {id:'epic',l:'Epický román',ch:'40+ kapitol',d:'Ságová epopej'},
+  {id:'short',l:'Krátká',ch:'6 kapitol',d:'Rychlé čtení (~1 hod)'},
+  {id:'medium',l:'Střední',ch:'12 kapitol',d:'Víkendová četba (~3 hod)'},
+  {id:'long',l:'Dlouhá',ch:'18 kapitol',d:'Plný příběh (~5 hod)'},
+  {id:'epic',l:'Epický román',ch:'25 kapitol',d:'Ságová epopej (~8 hod)'},
 ];
 const STYLES=[
   {id:'romantic',l:'Romantický',d:'Poetický, citový'},
@@ -670,6 +688,7 @@ const QUOTES=[
 
 let state={
   user:null,
+  isPro:false,
   books:[],
   currentBook:null,
   // wizard
@@ -677,6 +696,8 @@ let state={
   // chat
   chatHistory:[],
 };
+const FREE_BOOK_LIMIT=2;
+const FREE_LENGTHS=['short','medium']; // free users can only pick short or medium
 
 // ══════════════════════════════════════════════════════════
 // UTILS
@@ -719,6 +740,7 @@ function switchAuthMode(){
   document.getElementById('auth-name-wrap').style.display=isReg?'block':'none';
   document.getElementById('auth-forgot').style.display=isReg?'none':'block';
   document.getElementById('auth-demo-btn').style.display=isReg?'none':'block';
+  document.getElementById('auth-pro-btn').style.display=isReg?'none':'block';
   document.getElementById('auth-submit-btn').textContent=isReg?'Vytvořit účet →':'Přihlásit se →';
   document.getElementById('auth-switch').innerHTML=isReg?'Už máš účet? <a onclick="switchAuthMode()">Přihlas se</a>':'Ještě nemáš účet? <a onclick="switchAuthMode()">Zaregistruj se</a>';
   document.getElementById('auth-error').classList.remove('show');
@@ -749,19 +771,28 @@ function authSubmit(){
 }
 
 function quickLogin(provider){
-  const users={google:{name:'Google Uživatel',email:'user@gmail.com'},github:{name:'GitHub Uživatel',email:'user@github.com'},demo:{name:'Demo Uživatel',email:'demo@storyforge.ai'}};
+  const users={
+    google:{name:'Google Uživatel',email:'user@gmail.com'},
+    github:{name:'GitHub Uživatel',email:'user@github.com'},
+    demo:{name:'Demo Uživatel',email:'demo@storyforge.ai'},
+    pro:{name:'PRO Uživatel',email:'pro@storyforge.ai',pro:true},
+  };
   loginUser(users[provider]||users.demo);
 }
 
 function loginUser(user){
   state.user=user;
+  state.isPro=user.pro||false;
   document.getElementById('user-avatar').textContent=user.name[0].toUpperCase();
   document.getElementById('user-name-label').textContent=user.name;
   document.getElementById('user-email-label').textContent=user.email;
   document.getElementById('dash-greeting').textContent='Vítej zpět, '+user.name.split(' ')[0]+'! 👋';
+  renderPlanBox();
   document.getElementById('page-auth').classList.remove('active');
   document.getElementById('page-app').classList.add('active');
-  renderQuote();renderDashboard();
+  renderQuote();renderDashboard();renderPlanBox();
+  // Track login
+  fetch('/api/track',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:'login',user})}).catch(()=>{});
 }
 
 function logout(){
@@ -835,13 +866,18 @@ function selectGenre(id){
 }
 
 function renderLengthOpts(){
-  document.getElementById('length-opts').innerHTML=LENGTHS.map(l=>`
-    <div class="length-opt${state.wLength===l.id?' sel':''}" onclick="selectLength('${l.id}')">
-      <div><div style="font-weight:600;font-size:13.5px">${l.l}</div><div style="font-size:12px;color:var(--text3)">${l.d}</div></div>
+  document.getElementById('length-opts').innerHTML=LENGTHS.map(l=>{
+    const locked=!state.isPro&&!FREE_LENGTHS.includes(l.id);
+    return `<div class="length-opt${state.wLength===l.id?' sel':''}${locked?' locked-length':''}" onclick="${locked?'showUpgradeModal()':'selectLength(\''+l.id+'\'')'}">
+      <div><div style="font-weight:600;font-size:13.5px">${l.l}${locked?' <span class=\"pro-badge\">PRO</span>':''}</div><div style="font-size:12px;color:var(--text3)">${l.d}</div></div>
       <span class="badge badge-purple">${l.ch}</span>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
-function selectLength(id){state.wLength=id;renderLengthOpts();}
+function selectLength(id){
+  if(!state.isPro&&!FREE_LENGTHS.includes(id)){showUpgradeModal();return;}
+  state.wLength=id;renderLengthOpts();renderSummary();
+}
 
 function renderStyleGrid(){
   document.getElementById('style-grid').innerHTML=STYLES.map(s=>`
@@ -923,6 +959,13 @@ function setGenPhase(phase){
 }
 
 async function startGeneration(){
+  // Free plan check
+  if(!state.isPro&&state.books.length>=FREE_BOOK_LIMIT){
+    showUpgradeModal();return;
+  }
+  if(!state.isPro&&!FREE_LENGTHS.includes(state.wLength)){
+    showUpgradeModal();return;
+  }
   showScreen('generating');
   const {wGenres,wTitle,wTheme,wSetting,wChars,wLength,wStyle}=state;
   const gl=genreLabel(wGenres);
@@ -944,7 +987,7 @@ async function startGeneration(){
 
     setGenPhase(2);genLog('🗂️ Tvořím osnovu kapitol...');
     const outlineRaw=await callClaude(
-      [{role:'user',content:`Kniha "${title}" (${genre}). Téma:${wTheme}. Prostředí:${wSetting}. Hlavní konflikt: ${bible.mainConflict||wTheme}. Styl:${wStyle}. Postav: ${chapCount} kapitol.`}],
+      [{role:'user',content:`Kniha "${title}" (${genreTxt}). Téma:${wTheme}. Prostředí:${wSetting}. Hlavní konflikt: ${bible.mainConflict||wTheme}. Styl:${wStyle}. Počet kapitol: ${chapCount}.`}],
       `Vytvoř JSON pole přesně ${chapCount} kapitol: [{"number":1,"title":"...","summary":"..."},...]. Každé shrnutí min 2 věty. Pouze JSON.`
     );
     let chapters=[];
@@ -1010,6 +1053,9 @@ async function startGeneration(){
     };
 
     state.books.push(book);
+    renderPlanBox();
+    // Track book creation
+    fetch('/api/track',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:'book_created',user:state.user,bookId:book.id,bookTitle:book.title,bookGenre:book.genre})}).catch(()=>{});
     genPct(100);genLog('🎉 Kniha je hotová!');
     setGenPhase(6);
     setTimeout(()=>{openBook(book.id);toast('Tvoje kniha je hotová! 🎉','ok');},900);
@@ -1224,6 +1270,83 @@ function renderNavRecent(){
   }).join('');
 }
 
+function showUpgradeModal(){document.getElementById('upgrade-modal').style.display='flex';}
+function closeUpgradeModal(){document.getElementById('upgrade-modal').style.display='none';}
+function activatePro(months){
+  const m=parseInt(months)||1;
+  const expires=new Date();
+  expires.setMonth(expires.getMonth()+m);
+  state.isPro=true;
+  state.proExpires=expires;
+  if(state.user){state.user.pro=true;state.user.proExpires=expires;}
+  closeUpgradeModal();
+  renderPlanBox();
+  renderLengthOpts();
+  toast('🎉 PRO aktivováno na '+m+(m===1?' měsíc':m<5?' měsíce':' měsíců')+'! Platí do '+expires.toLocaleDateString('cs-CZ')+'.','info');
+}
+
+// ── ADMIN KONZOLE ──
+// Použití: sf.pro(3)  →  aktivuje PRO na 3 měsíce
+//          sf.free()  →  přepne zpět na Free
+//          sf.status()→  zobrazí aktuální stav
+window.sf={
+  pro(months=1){
+    activatePro(months);
+    console.log('%c✅ StoryForge PRO aktivováno na '+months+' měs.','color:#f59e0b;font-weight:bold;font-size:14px');
+    console.log('Platnost do:', state.proExpires?.toLocaleDateString('cs-CZ'));
+  },
+  free(){
+    state.isPro=false;
+    state.proExpires=null;
+    if(state.user){state.user.pro=false;state.user.proExpires=null;}
+    renderPlanBox();renderLengthOpts();
+    console.log('%c⬇️ Přepnuto na Free plán','color:#94a3b8;font-weight:bold;font-size:14px');
+    toast('Přepnuto na Free plán','info');
+  },
+  status(){
+    const expires=state.proExpires?state.proExpires.toLocaleDateString('cs-CZ'):'—';
+    console.log('%c📊 StoryForge Status','color:#7c3aed;font-weight:bold;font-size:15px');
+    console.table({
+      'Plán': state.isPro?'PRO ⭐':'Free',
+      'Platnost do': expires,
+      'Počet knih': state.books.length,
+      'Uživatel': state.user?.name||'—',
+      'Email': state.user?.email||'—',
+    });
+  },
+  help(){
+    console.log('%c📖 StoryForge Admin Příkazy','color:#7c3aed;font-weight:bold;font-size:15px');
+    console.log('%csf.pro(n)  %c→ aktivuj PRO na n měsíců  (např. sf.pro(3))','color:#f59e0b;font-weight:bold','color:#ccc');
+    console.log('%csf.free()  %c→ přepni zpět na Free plán','color:#94a3b8;font-weight:bold','color:#ccc');
+    console.log('%csf.status()%c→ zobraz aktuální stav účtu','color:#22c55e;font-weight:bold','color:#ccc');
+  }
+};
+
+function renderPlanBox(){
+  const box=document.getElementById('sidebar-plan-box');
+  if(!box)return;
+  const used=state.books.length;
+  if(state.isPro){
+    box.innerHTML=`
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:12px;font-weight:700">Váš plán</span>
+        <span class="pro-badge">⭐ PRO</span>
+      </div>
+      <p style="font-size:11.5px;color:var(--text2)">Neomezené knihy a všechny délky odemčeny.</p>`;
+  } else {
+    const pct=Math.min(100,Math.round(used/FREE_BOOK_LIMIT*100));
+    const warn=used>=FREE_BOOK_LIMIT;
+    box.innerHTML=`
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:12px;font-weight:700">Váš plán</span>
+        <span class="free-badge">Free</span>
+      </div>
+      <div style="font-size:11.5px;color:var(--text2);margin-bottom:6px">Knihy: <b style="color:var(--text)">${used}/${FREE_BOOK_LIMIT}</b></div>
+      <div class="limit-bar"><div class="limit-fill${warn?' warn':''}" style="width:${pct}%"></div></div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;font-size:12px;padding:7px;margin-top:10px" onclick="showUpgradeModal()">⚡ Upgradovat na PRO</button>`;
+  }
+}
+
 function renderQuote(){
   const q=QUOTES[Math.floor(Math.random()*QUOTES.length)];
   document.getElementById('quote-box').innerHTML='„'+esc(q.q)+'"<div class="quote-author">– '+esc(q.a)+'</div>';
@@ -1247,6 +1370,44 @@ async function generateIdea(){
 // INIT
 // ══════════════════════════════════════════════════════════
 renderGenreGrid();renderLengthOpts();renderStyleGrid();renderChars();
+console.log('%c⚡ StoryForge Admin%c  —  zadej sf.help() pro seznam příkazů','background:#7c3aed;color:#fff;padding:3px 8px;border-radius:4px;font-weight:bold','color:#94a3b8');
 </script>
+<!-- UPGRADE MODAL -->
+<div class="upgrade-modal" id="upgrade-modal" style="display:none" onclick="if(event.target===this)closeUpgradeModal()">
+  <div class="upgrade-box">
+    <button class="close-btn" onclick="closeUpgradeModal()">×</button>
+    <div style="text-align:center;margin-bottom:4px">
+      <div style="font-size:32px">⚡</div>
+      <h2 style="font-size:20px;margin:6px 0 4px">Odemkni plný potenciál</h2>
+      <p style="font-size:13px;color:var(--text2)">S PRO plánem bez omezení — piš kolik chceš.</p>
+    </div>
+    <div class="plan-row">
+      <div class="plan-card">
+        <div class="free-badge">Free</div>
+        <div class="plan-price">0 Kč<span>/měs</span></div>
+        <ul class="plan-feat">
+          <li>Max 2 knihy celkem</li>
+          <li>Krátká a střední délka</li>
+          <li>AI chat asistent</li>
+          <li class="no">Dlouhé a epické romány</li>
+          <li class="no">Neomezené knihy</li>
+        </ul>
+      </div>
+      <div class="plan-card pro">
+        <div class="pro-badge">⭐ PRO</div>
+        <div class="plan-price">199 Kč<span>/měs</span></div>
+        <ul class="plan-feat">
+          <li>Neomezené knihy</li>
+          <li>Všechny délky (až 25 kap.)</li>
+          <li>AI chat asistent</li>
+          <li>Prioritní generování</li>
+          <li>Komunita a sdílení</li>
+        </ul>
+      </div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:13px;font-size:15px" onclick="activatePro(1)">⚡ Aktivovat PRO — 199 Kč/měs</button>
+    <p style="text-align:center;font-size:11px;color:var(--text3);margin-top:10px">Demo: klikni výše pro simulaci PRO aktivace</p>
+  </div>
+</div>
 </body>
 </html>
