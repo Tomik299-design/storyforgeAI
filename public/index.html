@@ -732,6 +732,22 @@ function genreLabel(genres){
 // ══════════════════════════════════════════════════════════
 let authMode='login';
 
+// ══════════════════════════════════════════════════════════
+// AUTH & SESSION
+// ══════════════════════════════════════════════════════════
+let authToken = localStorage.getItem('sf_token') || null;
+
+function apiHeaders() {
+  return { 'Content-Type': 'application/json', ...(authToken ? { 'Authorization': 'Bearer ' + authToken } : {}) };
+}
+
+async function apiFetch(url, opts = {}) {
+  const r = await fetch(url, { ...opts, headers: { ...apiHeaders(), ...(opts.headers || {}) } });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error || 'Chyba serveru');
+  return d;
+}
+
 function switchAuthMode(){
   authMode=authMode==='login'?'register':'login';
   const isReg=authMode==='register';
@@ -758,7 +774,13 @@ function showAuthError(msg){
   el.textContent='⚠️ '+msg;el.classList.add('show');
 }
 
-function authSubmit(){
+function setAuthLoading(on){
+  const btn=document.getElementById('auth-submit-btn');
+  btn.disabled=on;
+  btn.textContent=on?'Načítám...':(authMode==='register'?'Vytvořit účet →':'Přihlásit se →');
+}
+
+async function authSubmit(){
   const email=document.getElementById('auth-email').value.trim();
   const pw=document.getElementById('auth-password').value;
   const name=document.getElementById('auth-name').value.trim();
@@ -766,41 +788,85 @@ function authSubmit(){
   if(!email||!pw){showAuthError('Vyplň všechna povinná pole.');return;}
   if(authMode==='register'&&!name){showAuthError('Zadej své jméno.');return;}
   if(pw.length<6){showAuthError('Heslo musí mít alespoň 6 znaků.');return;}
-  const userName=authMode==='register'?name:(email==='tereza@email.cz'?'Tereza Nováková':email.split('@')[0]);
-  loginUser({name:userName,email});
+  setAuthLoading(true);
+  try {
+    const endpoint = authMode==='register' ? '/api/auth/register' : '/api/auth/login';
+    const body = authMode==='register' ? {name,email,password:pw} : {email,password:pw};
+    const d = await apiFetch(endpoint, {method:'POST', body:JSON.stringify(body)});
+    authToken = d.token;
+    localStorage.setItem('sf_token', authToken);
+    await loginUser(d.user);
+  } catch(e) {
+    showAuthError(e.message);
+  } finally {
+    setAuthLoading(false);
+  }
 }
 
 function quickLogin(provider){
+  // Demo přihlášení — jen lokálně pro testování UI
   const users={
-    google:{name:'Google Uživatel',email:'user@gmail.com'},
-    github:{name:'GitHub Uživatel',email:'user@github.com'},
     demo:{name:'Demo Uživatel',email:'demo@storyforge.ai'},
-    pro:{name:'PRO Uživatel',email:'pro@storyforge.ai',pro:true},
+    pro:{name:'PRO Uživatel',email:'pro@storyforge.ai',isPro:true},
   };
-  loginUser(users[provider]||users.demo);
+  const u=users[provider]||users.demo;
+  authToken=null;
+  loginUser(u, true); // true = demo mode (no DB)
 }
 
-function loginUser(user){
+async function loginUser(user, demoMode=false){
   state.user=user;
-  state.isPro=user.pro||false;
+  state.isPro=user.isPro||user.pro||false;
+  state.demoMode=demoMode;
   document.getElementById('user-avatar').textContent=user.name[0].toUpperCase();
   document.getElementById('user-name-label').textContent=user.name;
   document.getElementById('user-email-label').textContent=user.email;
   document.getElementById('dash-greeting').textContent='Vítej zpět, '+user.name.split(' ')[0]+'! 👋';
+  // Load books from DB (unless demo mode)
+  if(!demoMode && authToken){
+    try {
+      const books = await apiFetch('/api/books');
+      state.books = books;
+    } catch(e) {
+      console.warn('Nelze načíst knihy:', e.message);
+      state.books = [];
+    }
+  }
   renderPlanBox();
   document.getElementById('page-auth').classList.remove('active');
   document.getElementById('page-app').classList.add('active');
   renderQuote();renderDashboard();renderPlanBox();
-  // Track login
-  fetch('/api/track',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:'login',user})}).catch(()=>{});
+  if(demoMode) toast('Demo režim — data se neukládají do databáze','info');
 }
 
-function logout(){
+async function logout(){
   if(!confirm('Odhlásit se?'))return;
+  // Save books before logout
+  authToken=null;
+  localStorage.removeItem('sf_token');
   state.user=null;
+  state.books=[];
+  state.currentBook=null;
+  state.isPro=false;
   document.getElementById('page-app').classList.remove('active');
   document.getElementById('page-auth').classList.add('active');
 }
+
+// Auto-login on page load if token exists
+async function tryAutoLogin(){
+  if(!authToken) return;
+  try {
+    const user = await apiFetch('/api/auth/me');
+    const books = await apiFetch('/api/books');
+    state.books = books;
+    await loginUser(user, false);
+  } catch(e) {
+    authToken=null;
+    localStorage.removeItem('sf_token');
+  }
+}
+
+
 
 // ══════════════════════════════════════════════════════════
 // NAVIGATION
@@ -868,10 +934,14 @@ function selectGenre(id){
 function renderLengthOpts(){
   document.getElementById('length-opts').innerHTML=LENGTHS.map(l=>{
     const locked=!state.isPro&&!FREE_LENGTHS.includes(l.id);
-    return `<div class="length-opt${state.wLength===l.id?' sel':''}${locked?' locked-length':''}" onclick="${locked?'showUpgradeModal()':'selectLength(\''+l.id+'\'')'}">
-      <div><div style="font-weight:600;font-size:13.5px">${l.l}${locked?' <span class=\"pro-badge\">PRO</span>':''}</div><div style="font-size:12px;color:var(--text3)">${l.d}</div></div>
-      <span class="badge badge-purple">${l.ch}</span>
-    </div>`;
+    const onclick=locked?'showUpgradeModal()':'selectLength(\'' +l.id+ '\')';
+    const proLabel=locked?' <span class="pro-badge">PRO</span>':'';
+    const cls='length-opt'+(state.wLength===l.id?' sel':'')+(locked?' locked-length':'');
+    return '<div class="'+cls+'" onclick="'+onclick+'">'
+      +'<div><div style="font-weight:600;font-size:13.5px">'+l.l+proLabel+'</div>'
+      +'<div style="font-size:12px;color:var(--text3)">'+l.d+'</div></div>'
+      +'<span class="badge badge-purple">'+l.ch+'</span>'
+      +'</div>';
   }).join('');
 }
 function selectLength(id){
@@ -1054,8 +1124,10 @@ async function startGeneration(){
 
     state.books.push(book);
     renderPlanBox();
-    // Track book creation
-    fetch('/api/track',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:'book_created',user:state.user,bookId:book.id,bookTitle:book.title,bookGenre:book.genre})}).catch(()=>{});
+    // Save book to DB
+    if(!state.demoMode && authToken){
+      apiFetch('/api/books',{method:'POST',body:JSON.stringify({book})}).catch(e=>console.warn('Save failed:',e.message));
+    }
     genPct(100);genLog('🎉 Kniha je hotová!');
     setGenPhase(6);
     setTimeout(()=>{openBook(book.id);toast('Tvoje kniha je hotová! 🎉','ok');},900);
@@ -1256,6 +1328,9 @@ function deleteBook(id){
   if(state.currentBook&&state.currentBook.id===id)state.currentBook=null;
   renderDashboard();renderLibrary();updateNavRecent();
   toast('Kniha smazána');
+  if(!state.demoMode && authToken){
+    apiFetch('/api/books/'+id,{method:'DELETE'}).catch(e=>console.warn('Delete failed:',e.message));
+  }
 }
 
 function updateNavRecent(){renderNavRecent();}
@@ -1290,14 +1365,19 @@ function activatePro(months){
 //          sf.free()  →  přepne zpět na Free
 //          sf.status()→  zobrazí aktuální stav
 window.sf={
-  pro(months=1){
+  async pro(months=1){
     activatePro(months);
+    if(state.user?.email){
+      try{
+        await fetch('/api/admin/subscribe',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':'storyforge-admin-2024'},body:JSON.stringify({email:state.user.email,months,note:'console'})});
+        console.log('%c✅ PRO uloženo do DB pro '+state.user.email,'color:#f59e0b;font-weight:bold;font-size:14px');
+      }catch(e){console.warn('DB save failed:',e.message);}
+    }
     console.log('%c✅ StoryForge PRO aktivováno na '+months+' měs.','color:#f59e0b;font-weight:bold;font-size:14px');
     console.log('Platnost do:', state.proExpires?.toLocaleDateString('cs-CZ'));
   },
   free(){
-    state.isPro=false;
-    state.proExpires=null;
+    state.isPro=false;state.proExpires=null;
     if(state.user){state.user.pro=false;state.user.proExpires=null;}
     renderPlanBox();renderLengthOpts();
     console.log('%c⬇️ Přepnuto na Free plán','color:#94a3b8;font-weight:bold;font-size:14px');
@@ -1312,6 +1392,7 @@ window.sf={
       'Počet knih': state.books.length,
       'Uživatel': state.user?.name||'—',
       'Email': state.user?.email||'—',
+      'Demo režim': state.demoMode?'Ano':'Ne',
     });
   },
   help(){
@@ -1371,6 +1452,7 @@ async function generateIdea(){
 // ══════════════════════════════════════════════════════════
 renderGenreGrid();renderLengthOpts();renderStyleGrid();renderChars();
 console.log('%c⚡ StoryForge Admin%c  —  zadej sf.help() pro seznam příkazů','background:#7c3aed;color:#fff;padding:3px 8px;border-radius:4px;font-weight:bold','color:#94a3b8');
+tryAutoLogin();
 </script>
 <!-- UPGRADE MODAL -->
 <div class="upgrade-modal" id="upgrade-modal" style="display:none" onclick="if(event.target===this)closeUpgradeModal()">
