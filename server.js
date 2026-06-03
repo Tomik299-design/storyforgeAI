@@ -13,8 +13,8 @@ const JSONBIN_KEY  = process.env.JSONBIN_KEY  || "$2a$10$Lqc8f5pMIW0fmsjFVvOJlu2
 const JWT_SECRET   = process.env.JWT_SECRET   || "storyforge-secret-2024";
 const ADMIN_KEY    = process.env.ADMIN_KEY    || "storyforge-admin-2024";
 const ADMIN_EMAIL  = process.env.ADMIN_EMAIL  || "storyforgeai26@gmail.com";
-const RESEND_KEY   = process.env.RESEND_KEY   || "";
-const FROM_EMAIL   = "StoryForge AI <onboarding@resend.dev>";
+const BREVO_KEY    = process.env.BREVO_KEY    || "";
+const FROM_EMAIL   = "StoryForge AI <storyforgeai26@gmail.com>";
 const APP_URL      = process.env.APP_URL      || "https://storyforgeai.onrender.com";
 const JSONBIN_URL  = "https://api.jsonbin.io/v3";
 
@@ -390,24 +390,29 @@ app.delete("/api/admin/subscribe/:email", adminMw, async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════════
-// EMAIL HELPERS — Resend.com API
+// EMAIL HELPERS — Brevo API
 // ══════════════════════════════════════════════════════════
 async function sendEmail({ to, subject, html }) {
-  if (!RESEND_KEY) {
-    console.warn("⚠️  RESEND_KEY není nastaven — email nebyl odeslán:", subject);
+  if (!BREVO_KEY) {
+    console.warn("⚠️  BREVO_KEY není nastaven — email nebyl odeslán:", subject);
     return;
   }
-  const r = await fetch("https://api.resend.com/emails", {
+  const r = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": "Bearer " + RESEND_KEY,
+      "api-key": BREVO_KEY,
     },
-    body: JSON.stringify({ from: FROM_EMAIL, to, subject, html }),
+    body: JSON.stringify({
+      sender: { name: "StoryForge AI", email: "storyforgeai26@gmail.com" },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+    }),
   });
   const data = await r.json();
-  if (!r.ok) throw new Error("Resend error: " + JSON.stringify(data));
-  console.log(`📧 Email odeslán na ${to}: ${subject} (id: ${data.id})`);
+  if (!r.ok) throw new Error("Brevo error: " + JSON.stringify(data));
+  console.log(`📧 Email odeslán na ${to}: ${subject} (id: ${data.messageId})`);
   return data;
 }
 
@@ -561,11 +566,11 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, async () => {
   console.log(`StoryForge AI running on port ${PORT}`);
   await initBins();
-  // Kontrola Resend API key
-  if (RESEND_KEY) {
-    console.log("✅ Resend API key nastaven — emaily budou fungovat");
+  // Kontrola Brevo API key
+  if (BREVO_KEY) {
+    console.log("✅ Brevo API key nastaven — emaily budou fungovat");
   } else {
-    console.warn("⚠️  RESEND_KEY není nastaven — emaily nebudou chodit!");
-    console.warn("   Přidej env proměnnou RESEND_KEY na Render.com");
+    console.warn("⚠️  BREVO_KEY není nastaven — emaily nebudou chodit!");
+    console.warn("   Přidej env proměnnou BREVO_KEY na Render.com");
   }
 });
