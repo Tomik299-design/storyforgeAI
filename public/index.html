@@ -365,7 +365,7 @@ select.input{cursor:pointer;}
       <div class="nav-item" onclick="toast('Brzy dostupné 🚀','info')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Šablony
       </div>
-      <div class="nav-item" onclick="toast('Brzy dostupné 🚀','info')">
+      <div class="nav-item" onclick="showScreen('favorites')" data-screen="favorites">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>Oblíbené
       </div>
       <div class="nav-section">Nedávno otevřené</div>
@@ -478,6 +478,22 @@ select.input{cursor:pointer;}
           <h2 style="font-size:22px;margin-bottom:8px">Knihovna je prázdná</h2>
           <p style="color:var(--text2);margin-bottom:24px">Vytvoř svoji první knihu a začni svůj příběh</p>
           <button class="btn btn-primary btn-lg" onclick="showScreen('wizard');resetWizard();">✨ Vytvořit knihu</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── FAVORITES ── -->
+    <div class="screen" id="screen-favorites">
+      <div class="topbar">
+        <div><h2>Oblíbené ❤️</h2><p id="fav-count"></p></div>
+      </div>
+      <div class="content">
+        <div class="lib-grid" id="fav-grid"></div>
+        <div id="fav-empty" style="display:none;text-align:center;padding:80px 20px;">
+          <div style="font-size:54px;margin-bottom:18px">🤍</div>
+          <h2 style="font-size:22px;margin-bottom:8px">Žádné oblíbené</h2>
+          <p style="color:var(--text2);margin-bottom:24px">Klikni na ❤️ u knihy a přidej ji sem</p>
+          <button class="btn btn-outline" onclick="showScreen('library')">Zobrazit knihy</button>
         </div>
       </div>
     </div>
@@ -597,6 +613,9 @@ select.input{cursor:pointer;}
           </button>
           <button class="btn btn-outline btn-sm" onclick="exportCurrentBook()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="showTranslateModal()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/></svg>Přeložit
           </button>
         </div>
       </div>
@@ -883,6 +902,7 @@ function showScreen(name){
   document.getElementById('main-panel').scrollTop=0;
   if(name==='dashboard')renderDashboard();
   if(name==='library')renderLibrary();
+  if(name==='favorites')renderFavorites();
   if(name==='wizard')renderWizardStep(state.wStep);
 }
 
@@ -1129,7 +1149,10 @@ async function startGeneration(){
     renderPlanBox();
     // Save book to DB
     if(!state.demoMode && authToken){
-      apiFetch('/api/books',{method:'POST',body:JSON.stringify({book})}).catch(e=>console.warn('Save failed:',e.message));
+      try {
+        await apiFetch('/api/books',{method:'POST',body:JSON.stringify({book})});
+        console.log('✅ Kniha uložena do DB');
+      } catch(e){ console.warn('Save failed:',e.message); }
     }
     genPct(100);genLog('🎉 Kniha je hotová!');
     setGenPhase(6);
@@ -1237,6 +1260,130 @@ function exportCurrentBook(){
 }
 
 // ══════════════════════════════════════════════════════════
+// PŘEKLAD KNIHY
+// ══════════════════════════════════════════════════════════
+function showTranslateModal(){
+  if(!state.currentBook)return;
+  document.getElementById('translate-modal').style.display='flex';
+  document.getElementById('translate-progress').style.display='none';
+  document.getElementById('translate-error').style.display='none';
+  document.getElementById('translate-start-btn').disabled=false;
+  document.getElementById('translate-cancel-btn').textContent='Zrušit';
+  document.getElementById('translate-bar').style.width='0%';
+}
+function closeTranslateModal(){document.getElementById('translate-modal').style.display='none';}
+
+async function startTranslation(){
+  const book=state.currentBook;
+  if(!book)return;
+  const lang=document.getElementById('translate-lang').value;
+  const startBtn=document.getElementById('translate-start-btn');
+  const cancelBtn=document.getElementById('translate-cancel-btn');
+  const progress=document.getElementById('translate-progress');
+  const status=document.getElementById('translate-status');
+  const pct=document.getElementById('translate-pct');
+  const bar=document.getElementById('translate-bar');
+  const errEl=document.getElementById('translate-error');
+
+  startBtn.disabled=true;
+  progress.style.display='block';
+  errEl.style.display='none';
+
+  const total=book.chapters.length;
+  const translated=[];
+
+  try{
+    // Přeložit titul, podtitul a anotaci
+    status.textContent='Překládám název knihy...';
+    const metaResp=await fetch('/api/claude',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+authToken},
+      body:JSON.stringify({
+        system:'Jsi profesionální překladatel. Přelož přesně do '+lang+'. Odpověz pouze JSON bez markdown.',
+        prompt:'Přelož do '+lang+' tyto texty a vrať JSON: {"title":"...","subtitle":"...","annotation":"..."}
+
+Title: '+book.title+'
+Subtitle: '+(book.subtitle||'')+'
+Annotation: '+(book.annotation||''),
+        max_tokens:500
+      })
+    });
+    const metaData=await metaResp.json();
+    let metaResult={title:book.title,subtitle:book.subtitle,annotation:book.annotation};
+    try{
+      const raw=metaData.content?.[0]?.text||metaData.result||'';
+      const clean=raw.replace(/```json|```/g,'').trim();
+      metaResult=JSON.parse(clean);
+    }catch(_){}
+
+    // Přeložit každou kapitolu
+    for(let i=0;i<total;i++){
+      const ch=book.chapters[i];
+      const p=Math.round(((i+1)/total)*100);
+      status.textContent=`Překládám kapitolu ${i+1} z ${total}...`;
+      pct.textContent=p+'%';
+      bar.style.width=p+'%';
+
+      const resp=await fetch('/api/claude',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+authToken},
+        body:JSON.stringify({
+          system:'Jsi profesionální literární překladatel. Přelož text do '+lang+'. Zachovej styl, atmosféru a strukturu. Přelož i název kapitoly. Odpověz pouze JSON bez markdown.',
+          prompt:'Přelož do '+lang+' a vrať JSON: {"title":"...","content":"..."}
+
+Název: '+ch.title+'
+
+Text:
+'+ch.content,
+          max_tokens:4000
+        })
+      });
+      const data=await resp.json();
+      let chResult={title:ch.title,content:ch.content};
+      try{
+        const raw=data.content?.[0]?.text||data.result||'';
+        const clean=raw.replace(/```json|```/g,'').trim();
+        chResult=JSON.parse(clean);
+      }catch(_){}
+      translated.push({...ch,title:chResult.title,content:chResult.content});
+    }
+
+    // Uložit přeloženou knihu jako novou
+    const newBook={
+      ...book,
+      id:Date.now(),
+      title:metaResult.title||book.title,
+      subtitle:metaResult.subtitle||book.subtitle,
+      annotation:metaResult.annotation||book.annotation,
+      chapters:translated,
+      createdAt:new Date().toISOString(),
+      translatedFrom:book.title,
+      translatedTo:lang,
+      wordCount:translated.reduce((s,c)=>s+(c.content?c.content.split(/\s+/).length:0),0),
+    };
+
+    state.books.push(newBook);
+    renderDashboard();renderLibrary();updateNavRecent();
+
+    if(!state.demoMode&&authToken){
+      apiFetch('/api/books',{method:'POST',body:JSON.stringify({book:newBook})}).catch(e=>console.warn('Save failed:',e.message));
+    }
+
+    closeTranslateModal();
+    toast('Překlad dokončen! 🌍','ok');
+    openBook(newBook.id);
+
+  }catch(e){
+    errEl.style.display='block';
+    errEl.textContent='Chyba překladu: '+e.message;
+    startBtn.disabled=false;
+  }
+
+  cancelBtn.textContent='Zavřít';
+  startBtn.disabled=false;
+}
+
+// ══════════════════════════════════════════════════════════
 // CHAT
 // ══════════════════════════════════════════════════════════
 function chatSuggest(el){
@@ -1311,12 +1458,14 @@ function bookCardHTML(book){
   const primaryGenre=Array.isArray(book.genre)?book.genre[0]:String(book.genre).split(',')[0];
   const [c1,c2]=COVERS[primaryGenre]||['#1e1e30','#0f0f1a'];
   const pct=Math.min(100,Math.round((book.chapters.length||0)/15*100));
+  const favIcon=book.isFavorite?'❤️':'🤍';
   return '<div class="book-card" onclick="openBook('+book.id+')">'+
     '<div class="book-cover" style="background:linear-gradient(160deg,'+c1+','+c2+')">'+
     '<div class="book-cover-overlay"></div><div class="book-cover-gradient"></div>'+
     '<span class="book-cover-emoji">'+gl.i+'</span>'+
     '<span class="book-genre-badge">'+gl.l+'</span>'+
-    '<button class="book-del-btn" onclick="event.stopPropagation();deleteBook('+book.id+')">🗑</button>'+
+    '<button class="book-del-btn" onclick="event.stopPropagation();deleteBook('+book.id+')" style="right:36px">🗑</button>'+
+    '<button class="book-del-btn" onclick="event.stopPropagation();toggleFavorite('+book.id+')" style="right:4px">'+favIcon+'</button>'+
     '</div><div class="book-body">'+
     '<div class="book-title">'+esc(book.title)+'</div>'+
     '<div class="book-meta">'+book.chapters.length+' kapitol · '+(book.wordCount||0).toLocaleString()+' slov</div>'+
@@ -1334,6 +1483,28 @@ function deleteBook(id){
   if(!state.demoMode && authToken){
     apiFetch('/api/books/'+id,{method:'DELETE'}).catch(e=>console.warn('Delete failed:',e.message));
   }
+}
+
+function toggleFavorite(id){
+  const book=state.books.find(b=>b.id===id);
+  if(!book)return;
+  book.isFavorite=!book.isFavorite;
+  renderDashboard();renderLibrary();updateNavRecent();
+  toast(book.isFavorite?'Přidáno do oblíbených ❤️':'Odebráno z oblíbených','ok');
+  if(!state.demoMode&&authToken){
+    apiFetch('/api/books',{method:'POST',body:JSON.stringify({book})}).catch(e=>console.warn('Save failed:',e.message));
+  }
+}
+
+function renderFavorites(){
+  const favs=state.books.filter(b=>b.isFavorite);
+  const grid=document.getElementById('fav-grid');
+  const empty=document.getElementById('fav-empty');
+  const cnt=document.getElementById('fav-count');
+  if(cnt)cnt.textContent=favs.length+' '+(favs.length===1?'kniha':favs.length<5?'knihy':'knih');
+  if(!grid)return;
+  if(favs.length===0){grid.style.display='none';if(empty)empty.style.display='block';}
+  else{grid.style.display='grid';if(empty)empty.style.display='none';grid.innerHTML=favs.map(b=>bookCardHTML(b)).join('');}
 }
 
 function updateNavRecent(){renderNavRecent();}
@@ -1640,6 +1811,45 @@ window.addEventListener('DOMContentLoaded', async () => {
       <input class="input" id="reset-newpw2" type="password" placeholder="Zopakuj heslo" style="width:100%;margin-bottom:14px">
       <div class="auth-error" id="reset-error3" style="margin-bottom:10px"></div>
       <button class="btn btn-primary" id="reset-confirm-btn" style="width:100%;justify-content:center;padding:12px" onclick="confirmReset()">Uložit nové heslo →</button>
+    </div>
+  </div>
+</div>
+
+<!-- TRANSLATE MODAL -->
+<div class="upgrade-modal" id="translate-modal" style="display:none" onclick="if(event.target===this)closeTranslateModal()">
+  <div class="upgrade-box" style="max-width:420px">
+    <button class="close-btn" onclick="closeTranslateModal()">×</button>
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:32px;margin-bottom:8px">🌍</div>
+      <h2 style="font-size:18px;margin-bottom:6px">Přeložit knihu</h2>
+      <p style="font-size:13px;color:var(--text2)">AI přeloží celou knihu kapitolu po kapitole.</p>
+    </div>
+    <div style="margin-bottom:16px">
+      <label class="label">Cílový jazyk</label>
+      <select class="input" id="translate-lang">
+        <option value="češtinu">🇨🇿 Čeština</option>
+        <option value="slovenštinu">🇸🇰 Slovenština</option>
+        <option value="angličtinu">🇬🇧 Angličtina</option>
+        <option value="němčinu">🇩🇪 Němčina</option>
+        <option value="francouzštinu">🇫🇷 Francouzština</option>
+        <option value="španělštinu">🇪🇸 Španělština</option>
+        <option value="italštinu">🇮🇹 Italština</option>
+        <option value="polštinu">🇵🇱 Polština</option>
+      </select>
+    </div>
+    <div id="translate-progress" style="display:none;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:12px;color:var(--text2)" id="translate-status">Překládám...</span>
+        <span style="font-size:12px;color:var(--text2)" id="translate-pct">0%</span>
+      </div>
+      <div style="background:var(--surface2);border-radius:99px;height:6px;overflow:hidden">
+        <div id="translate-bar" style="height:100%;background:linear-gradient(90deg,var(--purple),var(--purple2));border-radius:99px;width:0%;transition:width .4s"></div>
+      </div>
+    </div>
+    <div id="translate-error" class="error-msg" style="display:none;margin-bottom:12px"></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeTranslateModal()" id="translate-cancel-btn">Zrušit</button>
+      <button class="btn btn-primary" style="flex:2" onclick="startTranslation()" id="translate-start-btn">🌍 Přeložit knihu</button>
     </div>
   </div>
 </div>
