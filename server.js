@@ -2,7 +2,6 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const crypto = require("crypto");
-const nodemailer = require("nodemailer");
 
 const app = express();
 app.use(cors());
@@ -14,24 +13,15 @@ const JSONBIN_KEY  = process.env.JSONBIN_KEY  || "$2a$10$Lqc8f5pMIW0fmsjFVvOJlu2
 const JWT_SECRET   = process.env.JWT_SECRET   || "storyforge-secret-2024";
 const ADMIN_KEY    = process.env.ADMIN_KEY    || "storyforge-admin-2024";
 const ADMIN_EMAIL  = process.env.ADMIN_EMAIL  || "storyforgeai26@gmail.com";
-const GMAIL_USER   = process.env.GMAIL_USER   || "storyforgeai26@gmail.com";
-const GMAIL_PASS   = process.env.GMAIL_PASS   || "uhuubojzbalpLGVW".toLowerCase().replace(/\s+/g, "");
-const APP_URL      = process.env.APP_URL      || "https://storyforge.onrender.com";
+const RESEND_KEY   = process.env.RESEND_KEY   || "";
+const FROM_EMAIL   = "StoryForge AI <onboarding@resend.dev>";
+const APP_URL      = process.env.APP_URL      || "https://storyforgeai.onrender.com";
 const JSONBIN_URL  = "https://api.jsonbin.io/v3";
 
-// ── GMAIL SMTP ────────────────────────────────────────────
-const mailer = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false, // STARTTLS
-  auth: { user: GMAIL_USER, pass: GMAIL_PASS },
-  tls: { rejectUnauthorized: false },
-});
 
-
-// Bin IDs — vytvoří se automaticky při prvním spuštění
-let BIN_USERS = process.env.BIN_USERS || null;
-let BIN_BOOKS = process.env.BIN_BOOKS || null;
+// Bin IDs — nastavují se automaticky v initBins(), žádná env proměnná není potřeba
+let BIN_USERS = null;
+let BIN_BOOKS = null;
 
 // ── JSONBIN HELPERS ───────────────────────────────────────
 function jsonbinHeaders(extra = {}) {
@@ -76,35 +66,83 @@ async function binCreate(name, initial) {
 }
 
 // ── INIT BINS ─────────────────────────────────────────────
+// Meta bin uchovává ID ostatních binů — server si vše najde sám,
+// žádné ruční nastavování BIN_USERS / BIN_BOOKS v env není potřeba.
+const META_BIN_NAME = "storyforge-meta";
+
+async function findBinByName(name) {
+  // JSONBin /v3/b?name=... vrátí seznam binů s daným názvem
+  const r = await fetch(`${JSONBIN_URL}/b?name=${encodeURIComponent(name)}`, {
+    headers: jsonbinHeaders(),
+  });
+  const text = await r.text();
+  if (!r.ok) throw new Error(`JSONBin search failed (${r.status}): ${text}`);
+  const list = JSON.parse(text);
+  // Vrátí první shodu (pole objektů s .id / .metadata.id)
+  if (Array.isArray(list) && list.length > 0) {
+    return list[0].id || list[0].metadata?.id || null;
+  }
+  return null;
+}
+
 async function initBins() {
   console.log("🔄 Initializing JSONBin...");
   console.log("   JSONBIN_KEY set:", !!JSONBIN_KEY);
-  console.log("   BIN_USERS env:", process.env.BIN_USERS || "not set");
-  console.log("   BIN_BOOKS env:", process.env.BIN_BOOKS || "not set");
   try {
-    if (!BIN_USERS) {
-      console.log("   Creating users bin...");
-      BIN_USERS = await binCreate("storyforge-users", { users: [] });
-      console.log("✅ Created users bin:", BIN_USERS);
-      console.log("👉 Add to Render env: BIN_USERS=" + BIN_USERS);
-    } else {
-      // verify it works
-      await binGet(BIN_USERS);
+    // 1. Najdi nebo vytvoř meta bin
+    let metaId = process.env.BIN_META || null;
+    if (!metaId) {
+      try { metaId = await findBinByName(META_BIN_NAME); } catch (_) {}
+    }
+
+    let meta = { users: null, books: null };
+
+    if (metaId) {
+      try {
+        meta = await binGet(metaId);
+        console.log("✅ Meta bin nalezen:", metaId);
+      } catch (e) {
+        console.warn("⚠️  Meta bin nečitelný, vytvářím nový:", e.message);
+        metaId = null;
+      }
+    }
+
+    if (!metaId) {
+      console.log("   Vytvářím meta bin...");
+      metaId = await binCreate(META_BIN_NAME, meta);
+      console.log("✅ Meta bin vytvořen:", metaId);
+    }
+
+    // 2. Users bin
+    if (meta.users) {
+      BIN_USERS = meta.users;
+      await binGet(BIN_USERS); // ověření
       console.log("✅ Users bin OK:", BIN_USERS);
-    }
-    if (!BIN_BOOKS) {
-      console.log("   Creating books bin...");
-      BIN_BOOKS = await binCreate("storyforge-books", { books: [] });
-      console.log("✅ Created books bin:", BIN_BOOKS);
-      console.log("👉 Add to Render env: BIN_BOOKS=" + BIN_BOOKS);
     } else {
-      await binGet(BIN_BOOKS);
-      console.log("✅ Books bin OK:", BIN_BOOKS);
+      console.log("   Vytvářím users bin...");
+      BIN_USERS = await binCreate("storyforge-users", { users: [] });
+      console.log("✅ Users bin vytvořen:", BIN_USERS);
+      meta.users = BIN_USERS;
+      await binSet(metaId, meta);
     }
-    console.log("✅ JSONBin fully ready.");
+
+    // 3. Books bin
+    if (meta.books) {
+      BIN_BOOKS = meta.books;
+      await binGet(BIN_BOOKS); // ověření
+      console.log("✅ Books bin OK:", BIN_BOOKS);
+    } else {
+      console.log("   Vytvářím books bin...");
+      BIN_BOOKS = await binCreate("storyforge-books", { books: [] });
+      console.log("✅ Books bin vytvořen:", BIN_BOOKS);
+      meta.books = BIN_BOOKS;
+      await binSet(metaId, meta);
+    }
+
+    console.log("✅ JSONBin plně připraven — žádná manuální konfigurace není potřeba.");
   } catch (e) {
     console.error("❌ JSONBin init FAILED:", e.message);
-    console.error("   This means DB calls will fail. Check JSONBIN_KEY and bin IDs.");
+    console.error("   Zkontroluj JSONBIN_KEY.");
   }
 }
 
@@ -352,17 +390,25 @@ app.delete("/api/admin/subscribe/:email", adminMw, async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════════
-// EMAIL HELPERS
+// EMAIL HELPERS — Resend.com API
 // ══════════════════════════════════════════════════════════
 async function sendEmail({ to, subject, html }) {
-  const info = await mailer.sendMail({
-    from: `"StoryForge AI" <${GMAIL_USER}>`,
-    to,
-    subject,
-    html,
+  if (!RESEND_KEY) {
+    console.warn("⚠️  RESEND_KEY není nastaven — email nebyl odeslán:", subject);
+    return;
+  }
+  const r = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + RESEND_KEY,
+    },
+    body: JSON.stringify({ from: FROM_EMAIL, to, subject, html }),
   });
-  console.log(`📧 Email sent to ${to}: ${subject} (id: ${info.messageId})`);
-  return info;
+  const data = await r.json();
+  if (!r.ok) throw new Error("Resend error: " + JSON.stringify(data));
+  console.log(`📧 Email odeslán na ${to}: ${subject} (id: ${data.id})`);
+  return data;
 }
 
 // ══════════════════════════════════════════════════════════
@@ -515,12 +561,11 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, async () => {
   console.log(`StoryForge AI running on port ${PORT}`);
   await initBins();
-  // Ověření SMTP spojení
-  try {
-    await mailer.verify();
-    console.log('✅ Gmail SMTP ready — emaily budou fungovat');
-  } catch (e) {
-    console.error('❌ Gmail SMTP FAILED:', e.message);
-    console.error('   Zkontroluj GMAIL_USER a GMAIL_PASS (app password bez mezer, 2FA zapnuté)');
+  // Kontrola Resend API key
+  if (RESEND_KEY) {
+    console.log("✅ Resend API key nastaven — emaily budou fungovat");
+  } else {
+    console.warn("⚠️  RESEND_KEY není nastaven — emaily nebudou chodit!");
+    console.warn("   Přidej env proměnnou RESEND_KEY na Render.com");
   }
 });
