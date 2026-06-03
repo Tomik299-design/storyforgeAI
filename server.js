@@ -459,6 +459,66 @@ app.post("/api/auth/reset-confirm", async (req, res) => {
   }
 });
 
+// UPDATE TRANSLATION COUNT
+app.post("/api/auth/update-translations", authMw, async (req, res) => {
+  try {
+    const db = await binGet(BIN_USERS);
+    const user = db.users.find(u => u.id === req.user.id);
+    if (!user) return res.status(404).json({ error: "Uživatel nenalezen" });
+    user.externalTranslations = (user.externalTranslations || 0) + 1;
+    await binSet(BIN_USERS, db);
+    res.json({ ok: true, externalTranslations: user.externalTranslations });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET translation count (used on load)
+app.get("/api/auth/translations", authMw, async (req, res) => {
+  try {
+    const db = await binGet(BIN_USERS);
+    const user = db.users.find(u => u.id === req.user.id);
+    if (!user) return res.status(404).json({ error: "Uživatel nenalezen" });
+    res.json({ externalTranslations: user.externalTranslations || 0 });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── PDF TEXT EXTRACTION ───────────────────────────────────
+app.post("/api/extract-pdf", authMw, async (req, res) => {
+  const { base64, name } = req.body;
+  if (!base64) return res.status(400).json({ error: "Chybí PDF data" });
+
+  try {
+    // Decode base64 to buffer
+    const pdfBuffer = Buffer.from(base64, "base64");
+
+    // Use pdf-parse if available, otherwise return error with instructions
+    let pdfParse;
+    try {
+      pdfParse = require("pdf-parse");
+    } catch (e) {
+      // pdf-parse not installed — fallback: return error instructing install
+      return res.status(500).json({
+        error: "pdf-parse není nainstalován. Přidej do package.json: \"pdf-parse\": \"^1.1.1\" a restartuj server."
+      });
+    }
+
+    const data = await pdfParse(pdfBuffer);
+    const text = data.text || "";
+
+    if (!text.trim()) {
+      return res.status(422).json({ error: "PDF neobsahuje extrahovatelný text (pravděpodobně skenovaný dokument)." });
+    }
+
+    res.json({ ok: true, text, pages: data.numpages, chars: text.length });
+  } catch (e) {
+    console.error("PDF extract error:", e.message);
+    res.status(500).json({ error: "Chyba při čtení PDF: " + e.message });
+  }
+});
+
 // ══════════════════════════════════════════════════════════
 // PRO REQUEST
 // ══════════════════════════════════════════════════════════
