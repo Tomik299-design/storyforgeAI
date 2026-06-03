@@ -14,7 +14,7 @@ const JWT_SECRET   = process.env.JWT_SECRET   || "storyforge-secret-2024";
 const ADMIN_KEY    = process.env.ADMIN_KEY    || "storyforge-admin-2024";
 const ADMIN_EMAIL  = process.env.ADMIN_EMAIL  || "storyforgeai26@gmail.com";
 const BREVO_KEY    = process.env.BREVO_KEY    || "";
-const FROM_EMAIL   = "StoryForge AI <storyforgeai26@gmail.com>";
+const FROM_EMAIL   = process.env.FROM_EMAIL || "StoryForge AI <storyforgeai26@gmail.com>";
 const APP_URL      = process.env.APP_URL      || "https://storyforgeai.onrender.com";
 const JSONBIN_URL  = "https://api.jsonbin.io/v3";
 
@@ -383,7 +383,7 @@ async function sendEmail({ to, subject, html }) {
       "api-key": BREVO_KEY,
     },
     body: JSON.stringify({
-      sender: { name: "StoryForge AI", email: "storyforgeai26@gmail.com" },
+      sender: { name: "StoryForge AI", email: FROM_EMAIL.match(/<(.+)>/)[1] },
       to: [{ email: to }],
       subject,
       htmlContent: html,
