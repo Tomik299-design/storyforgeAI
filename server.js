@@ -513,10 +513,11 @@ app.post("/api/claude", async (req, res) => {
   const apiKey = process.env.MISTRAL_API_KEY;
   if (!apiKey) return res.status(500).json({ error: "Missing MISTRAL_API_KEY" });
   try {
-    const { system, messages, max_tokens } = req.body;
+    const { system, messages, prompt, max_tokens } = req.body;
     const mistralMessages = [];
     if (system) mistralMessages.push({ role: "system", content: system });
-    for (const msg of messages) mistralMessages.push(msg);
+    if (messages) { for (const msg of messages) mistralMessages.push(msg); }
+    else if (prompt) mistralMessages.push({ role: "user", content: prompt });
     const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": "Bearer " + apiKey },
