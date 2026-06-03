@@ -364,6 +364,9 @@ select.input{cursor:pointer;}
       <div class="nav-item" onclick="showScreen('favorites')" data-screen="favorites">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>Oblíbené
       </div>
+      <div class="nav-item" onclick="showScreen('translate-own')" data-screen="translate-own">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 5h12M9 3v2"/><path d="M5 7c0 5.523 4.477 10 10 10"/><path d="M7 9c0 3.866 2.686 7 6 7"/><path d="M15 17l3-3 3 3M18 20v-6"/></svg>Přeložit knihu
+      </div>
       <div class="nav-section">Nedávno otevřené</div>
       <div id="nav-recent"></div>
     </div>
@@ -491,6 +494,78 @@ select.input{cursor:pointer;}
           <p style="color:var(--text2);margin-bottom:24px">Klikni na ❤️ u knihy a přidej ji sem</p>
           <button class="btn btn-outline" onclick="showScreen('library')">Zobrazit knihy</button>
         </div>
+      </div>
+    </div>
+
+    <!-- ── TRANSLATE OWN BOOK ── -->
+    <div class="screen" id="screen-translate-own">
+      <div class="topbar">
+        <div><h2>Přeložit knihu 🌍</h2><p>Nahraj TXT nebo PDF a AI ho přeloží do jiného jazyka</p></div>
+      </div>
+      <div class="content" style="max-width:620px;margin:0 auto;padding:32px 24px">
+
+        <!-- Freemium info -->
+        <div id="own-trans-limit-info" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:14px 18px;margin-bottom:24px;font-size:13px;color:var(--text2);display:flex;align-items:center;gap:10px">
+          <span style="font-size:18px">ℹ️</span>
+          <span id="own-trans-limit-text">Načítám...</span>
+        </div>
+
+        <!-- Upload zone -->
+        <div id="own-drop-zone" style="border:2px dashed var(--border2);border-radius:var(--r2);padding:40px 20px;text-align:center;cursor:pointer;transition:border-color .2s;margin-bottom:20px"
+          onclick="document.getElementById('own-file-input').click()"
+          ondragover="event.preventDefault();this.style.borderColor='var(--purple)'"
+          ondragleave="this.style.borderColor='var(--border2)'"
+          ondrop="handleOwnFileDrop(event)">
+          <div style="font-size:36px;margin-bottom:10px">📄</div>
+          <p style="font-size:14px;font-weight:600;margin-bottom:4px">Přetáhni soubor sem nebo klikni pro výběr</p>
+          <p style="font-size:12px;color:var(--text3)">Podporované formáty: TXT, PDF (max 5 MB)</p>
+          <input type="file" id="own-file-input" accept=".txt,.pdf" style="display:none" onchange="handleOwnFileSelect(this.files[0])">
+        </div>
+
+        <!-- File info -->
+        <div id="own-file-info" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:12px 16px;margin-bottom:20px;display:none;align-items:center;gap:12px">
+          <span style="font-size:22px" id="own-file-icon">📄</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="own-file-name">—</div>
+            <div style="font-size:11px;color:var(--text3)" id="own-file-size">—</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="clearOwnFile()">✕</button>
+        </div>
+
+        <!-- Language select -->
+        <div style="margin-bottom:20px">
+          <label class="label">Přeložit do jazyka</label>
+          <select class="input" id="own-translate-lang">
+            <option value="češtinu">🇨🇿 Čeština</option>
+            <option value="slovenštinu">🇸🇰 Slovenština</option>
+            <option value="angličtinu">🇬🇧 Angličtina</option>
+            <option value="němčinu">🇩🇪 Němčina</option>
+            <option value="francouzštinu">🇫🇷 Francouzština</option>
+            <option value="španělštinu">🇪🇸 Španělština</option>
+            <option value="italštinu">🇮🇹 Italština</option>
+            <option value="polštinu">🇵🇱 Polština</option>
+          </select>
+        </div>
+
+        <!-- Progress -->
+        <div id="own-trans-progress" style="display:none;margin-bottom:20px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+            <span style="font-size:12px;color:var(--text2)" id="own-trans-status">Překládám...</span>
+            <span style="font-size:12px;color:var(--text2)" id="own-trans-pct">0%</span>
+          </div>
+          <div style="background:var(--surface2);border-radius:99px;height:7px;overflow:hidden">
+            <div id="own-trans-bar" style="height:100%;background:linear-gradient(90deg,var(--purple),var(--purple2));border-radius:99px;width:0%;transition:width .4s"></div>
+          </div>
+        </div>
+
+        <!-- Error -->
+        <div id="own-trans-error" class="error-msg" style="display:none;margin-bottom:16px"></div>
+
+        <!-- Actions -->
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-primary" style="flex:1;justify-content:center" id="own-trans-start-btn" onclick="startOwnTranslation()">🌍 Přeložit a stáhnout</button>
+        </div>
+        <p style="font-size:11px;color:var(--text3);margin-top:10px;text-align:center">Přeložený soubor se automaticky stáhne jako TXT</p>
       </div>
     </div>
 
@@ -890,6 +965,7 @@ function showScreen(name){
   if(name==='dashboard')renderDashboard();
   if(name==='library')renderLibrary();
   if(name==='favorites')renderFavorites();
+  if(name==='translate-own')initTranslateOwnScreen();
   if(name==='wizard')renderWizardStep(state.wStep);
 }
 
@@ -1359,6 +1435,186 @@ async function startTranslation(){
 
   cancelBtn.textContent='Zavřít';
   startBtn.disabled=false;
+}
+
+// ══════════════════════════════════════════════════════════
+// PŘEKLAD VLASTNÍ KNIHY
+// ══════════════════════════════════════════════════════════
+let ownTransFile = null;
+let ownTransText = '';
+
+async function initTranslateOwnScreen() {
+  const info = document.getElementById('own-trans-limit-text');
+  if (!authToken) { info.textContent = 'Pro překlad se přihlas.'; return; }
+  try {
+    const d = await apiFetch('/api/auth/translations');
+    const used = d.externalTranslations || 0;
+    const isPro = state.user?.isPro;
+    if (isPro) {
+      info.textContent = '⚡ PRO — neomezený počet překladů';
+      document.getElementById('own-trans-limit-info').style.borderColor = 'rgba(124,58,237,.35)';
+    } else {
+      const remaining = Math.max(0, 1 - used);
+      info.textContent = `Free plán: ${remaining} překlad${remaining===1?'':'y'} zbývají (z 1 celkem). PRO = neomezeno.`;
+      if (remaining === 0) {
+        document.getElementById('own-trans-start-btn').disabled = true;
+        info.textContent = '🔒 Dosáhl/a jsi limitu Free plánu (1 překlad). Přejdi na PRO pro neomezené překlady.';
+        document.getElementById('own-trans-limit-info').style.borderColor = 'rgba(239,68,68,.35)';
+      }
+    }
+  } catch(e) { info.textContent = 'Nepodařilo se načíst info o překladech.'; }
+}
+
+function handleOwnFileDrop(event) {
+  event.preventDefault();
+  document.getElementById('own-drop-zone').style.borderColor = 'var(--border2)';
+  const file = event.dataTransfer.files[0];
+  if (file) handleOwnFileSelect(file);
+}
+
+async function handleOwnFileSelect(file) {
+  if (!file) return;
+  const maxSize = 5 * 1024 * 1024;
+  if (file.size > maxSize) { toast('Soubor je příliš velký (max 5 MB)', 'error'); return; }
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['txt','pdf'].includes(ext)) { toast('Podporovány jsou pouze TXT a PDF soubory', 'error'); return; }
+
+  ownTransFile = file;
+  document.getElementById('own-file-name').textContent = file.name;
+  document.getElementById('own-file-size').textContent = (file.size/1024).toFixed(1) + ' KB';
+  document.getElementById('own-file-icon').textContent = ext === 'pdf' ? '📕' : '📄';
+  const fi = document.getElementById('own-file-info');
+  fi.style.display = 'flex';
+
+  const errEl = document.getElementById('own-trans-error');
+  errEl.style.display = 'none';
+
+  if (ext === 'txt') {
+    ownTransText = await file.text();
+  } else {
+    // PDF — send to server for extraction
+    const status = document.getElementById('own-trans-status');
+    const progress = document.getElementById('own-trans-progress');
+    progress.style.display = 'block';
+    status.textContent = 'Extrahuji text z PDF...';
+    try {
+      const base64 = await fileToBase64(file);
+      const resp = await apiFetch('/api/extract-pdf', { method:'POST', body: JSON.stringify({ base64, name: file.name }) });
+      ownTransText = resp.text || '';
+      if (!ownTransText.trim()) throw new Error('PDF neobsahuje extrahovatelný text');
+      status.textContent = `✅ Extrahováno ${resp.chars} znaků z ${resp.pages} stran`;
+      setTimeout(() => { progress.style.display = 'none'; }, 2000);
+    } catch(e) {
+      progress.style.display = 'none';
+      errEl.style.display = 'block';
+      errEl.textContent = 'Chyba extrakce PDF: ' + e.message;
+      ownTransText = '';
+    }
+  }
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result.split(',')[1]);
+    r.onerror = () => reject(new Error('Čtení souboru selhalo'));
+    r.readAsDataURL(file);
+  });
+}
+
+function clearOwnFile() {
+  ownTransFile = null;
+  ownTransText = '';
+  document.getElementById('own-file-info').style.display = 'none';
+  document.getElementById('own-file-input').value = '';
+  document.getElementById('own-trans-progress').style.display = 'none';
+  document.getElementById('own-trans-error').style.display = 'none';
+}
+
+async function startOwnTranslation() {
+  if (!ownTransText.trim()) { toast('Nejprve nahraj soubor', 'error'); return; }
+
+  const lang = document.getElementById('own-translate-lang').value;
+  const startBtn = document.getElementById('own-trans-start-btn');
+  const progress = document.getElementById('own-trans-progress');
+  const status = document.getElementById('own-trans-status');
+  const pct = document.getElementById('own-trans-pct');
+  const bar = document.getElementById('own-trans-bar');
+  const errEl = document.getElementById('own-trans-error');
+
+  // Check free limit
+  if (!state.user?.isPro) {
+    try {
+      const d = await apiFetch('/api/auth/translations');
+      if ((d.externalTranslations || 0) >= 1) {
+        toast('Dosáhl/a jsi limitu Free plánu. Přejdi na PRO.', 'error');
+        return;
+      }
+    } catch(e) {}
+  }
+
+  startBtn.disabled = true;
+  progress.style.display = 'block';
+  errEl.style.display = 'none';
+
+  // Rozdělení na chunky ~2000 znaků
+  const CHUNK = 2000;
+  const chunks = [];
+  for (let i = 0; i < ownTransText.length; i += CHUNK) {
+    chunks.push(ownTransText.slice(i, i + CHUNK));
+  }
+
+  const translated = [];
+  try {
+    for (let i = 0; i < chunks.length; i++) {
+      const p = Math.round(((i+1)/chunks.length)*100);
+      status.textContent = `Překládám část ${i+1} z ${chunks.length}...`;
+      pct.textContent = p + '%';
+      bar.style.width = p + '%';
+
+      const resp = await fetch('/api/claude', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+        body: JSON.stringify({
+          system: 'Jsi profesionální literární překladatel. Přelož přesně do ' + lang + '. Zachovej formátování, odstavce a styl. Vrať POUZE přeložený text bez komentářů.',
+          prompt: chunks[i],
+          max_tokens: 4000
+        })
+      });
+      const data = await resp.json();
+      const text = data.content?.[0]?.text || chunks[i];
+      translated.push(text);
+    }
+
+    // Increment translation count
+    if (!state.user?.isPro) {
+      try { await apiFetch('/api/auth/update-translations', { method:'POST', body:'{}' }); } catch(e) {}
+    }
+
+    // Download result
+    const result = translated.join('\n');
+    const baseName = ownTransFile ? ownTransFile.name.replace(/\.[^.]+$/, '') : 'preklad';
+    const blob = new Blob([result], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = baseName + '_' + lang + '.txt';
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+
+    status.textContent = '✅ Překlad dokončen!';
+    pct.textContent = '100%';
+    bar.style.width = '100%';
+    toast('Překlad dokončen a stažen! 🌍', 'ok');
+
+    // Refresh limit info
+    initTranslateOwnScreen();
+
+  } catch(e) {
+    errEl.style.display = 'block';
+    errEl.textContent = 'Chyba překladu: ' + e.message;
+  }
+
+  startBtn.disabled = false;
 }
 
 // ══════════════════════════════════════════════════════════
