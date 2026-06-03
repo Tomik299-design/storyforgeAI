@@ -854,6 +854,9 @@ async function logout(){
 
 // Auto-login on page load if token exists
 async function tryAutoLogin(){
+  // Pokud je v URL reset token, nepřihlašujeme automaticky — nechceme schovat reset modal
+  const resetToken = new URLSearchParams(window.location.search).get('reset');
+  if(resetToken) return;
   if(!authToken) return;
   try {
     const user = await apiFetch('/api/auth/me');
@@ -1523,6 +1526,10 @@ async function confirmReset(){
 function checkResetToken(){
   const token=new URLSearchParams(window.location.search).get('reset');
   if(token){
+    // Ujistíme se že jsme na auth stránce (ne v appce)
+    document.getElementById('page-auth').classList.add('active');
+    document.getElementById('page-app').classList.remove('active');
+    // Zobrazíme reset modal na kroku 3 (zadání nového hesla)
     document.getElementById('reset-modal').style.display='flex';
     document.getElementById('reset-step1').style.display='none';
     document.getElementById('reset-step2').style.display='none';
