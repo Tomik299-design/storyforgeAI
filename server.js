@@ -15,14 +15,17 @@ const JWT_SECRET   = process.env.JWT_SECRET   || "storyforge-secret-2024";
 const ADMIN_KEY    = process.env.ADMIN_KEY    || "storyforge-admin-2024";
 const ADMIN_EMAIL  = process.env.ADMIN_EMAIL  || "storyforgeai26@gmail.com";
 const GMAIL_USER   = process.env.GMAIL_USER   || "storyforgeai26@gmail.com";
-const GMAIL_PASS   = process.env.GMAIL_PASS   || "uhuubojzbalpLGVW".toLowerCase().replace(/(.{4})/g,"$1 ").trim();
+const GMAIL_PASS   = process.env.GMAIL_PASS   || "uhuubojzbalpLGVW".toLowerCase().replace(/\s+/g, "");
 const APP_URL      = process.env.APP_URL      || "https://storyforge.onrender.com";
 const JSONBIN_URL  = "https://api.jsonbin.io/v3";
 
 // ── GMAIL SMTP ────────────────────────────────────────────
 const mailer = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false, // STARTTLS
   auth: { user: GMAIL_USER, pass: GMAIL_PASS },
+  tls: { rejectUnauthorized: false },
 });
 
 
@@ -512,4 +515,12 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, async () => {
   console.log(`StoryForge AI running on port ${PORT}`);
   await initBins();
+  // Ověření SMTP spojení
+  try {
+    await mailer.verify();
+    console.log('✅ Gmail SMTP ready — emaily budou fungovat');
+  } catch (e) {
+    console.error('❌ Gmail SMTP FAILED:', e.message);
+    console.error('   Zkontroluj GMAIL_USER a GMAIL_PASS (app password bez mezer, 2FA zapnuté)');
+  }
 });
