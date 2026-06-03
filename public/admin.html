@@ -275,7 +275,7 @@ function renderStats(s){
     <div class="stat-card stat-yellow"><div class="stat-label">Aktivní předplatné</div><div class="stat-value">${s.activeSubscriptions}</div><div class="stat-sub">${s.proUsers} PRO uživatelů</div></div>
     <div class="stat-card stat-green"><div class="stat-label">Celkem knih</div><div class="stat-value">${s.totalBooks}</div><div class="stat-sub">${s.totalGenerations} generování</div></div>
     <div class="stat-card stat-blue"><div class="stat-label">Návštěvy</div><div class="stat-value">${s.pageViews}</div><div class="stat-sub">unikátních přihlášení</div></div>
-    <div class="stat-card stat-green"><div class="stat-label">Příjmy (celkem)</div><div class="stat-value">${s.revenue.toLocaleString('cs-CZ')}</div><div class="stat-sub">Kč ze všech předplatných</div></div>`;
+    <div class="stat-card stat-green"><div class="stat-label">Příjmy (celkem)</div><div class="stat-value">${(s.revenue||0).toLocaleString('cs-CZ')}</div><div class="stat-sub">Kč ze všech předplatných</div></div>`;
 }
 
 // ── USERS ─────────────────────────────────────────────────
@@ -410,7 +410,7 @@ function switchTab(tab){
 }
 
 // ── UTILS ─────────────────────────────────────────────────
-function fmtDate(s){if(!s)return'—';const d=new Date(s);return d.toLocaleDateString('cs-CZ')+' '+d.toLocaleTimeString('cs-CZ',{hour:'2-digit',minute:'2-digit'});}
+function fmtDate(s){if(!s)return'—';try{const d=new Date(s);if(isNaN(d))return'—';return d.toLocaleDateString('cs-CZ')+' '+d.toLocaleTimeString('cs-CZ',{hour:'2-digit',minute:'2-digit'});}catch(e){return'—';}}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function toast(msg,type){
   const el=document.getElementById('toast');

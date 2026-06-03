@@ -358,7 +358,7 @@ select.input{cursor:pointer;}
       <div class="nav-item" onclick="showScreen('wizard');resetWizard();" data-screen="wizard">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Nová kniha
       </div>
-      <div class="nav-item" onclick="toast('Brzy dostupné 🚀','info')">
+      <div class="nav-item" onclick="showScreen('templates')" data-screen="templates">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Šablony
       </div>
       <div class="nav-item" onclick="showScreen('favorites')" data-screen="favorites">
@@ -436,6 +436,14 @@ select.input{cursor:pointer;}
                 <p style="font-size:12.5px;color:var(--text2)">Vygeneruj náhodný nápad na příběh pomocí AI.</p>
               </div>
               <button class="btn btn-primary" onclick="generateIdea()">Vygenerovat nápad 🎲</button>
+            </div>
+            <!-- Saved ideas -->
+            <div id="ideas-panel" style="margin-top:14px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                <h4 style="font-size:13px;font-weight:700">💡 Uložené nápady</h4>
+                <span id="ideas-clear-btn" onclick="clearAllIdeas()" style="font-size:11px;color:var(--text3);cursor:pointer;display:none">Vymazat vše</span>
+              </div>
+              <div id="ideas-list"><p style="color:var(--text3);font-size:12.5px;text-align:center;padding:12px 0">Zatím žádné nápady. Klikni na tlačítko výše!</p></div>
             </div>
           </div>
 
@@ -566,6 +574,16 @@ select.input{cursor:pointer;}
           <button class="btn btn-primary" style="flex:1;justify-content:center" id="own-trans-start-btn" onclick="startOwnTranslation()">🌍 Přeložit a stáhnout</button>
         </div>
         <p style="font-size:11px;color:var(--text3);margin-top:10px;text-align:center">Přeložený soubor se automaticky stáhne jako TXT</p>
+      </div>
+    </div>
+
+    <!-- ── TEMPLATES ── -->
+    <div class="screen" id="screen-templates">
+      <div class="topbar">
+        <div><h2>Šablony 📋</h2><p>Hotové šablony pro rychlý start</p></div>
+      </div>
+      <div class="content" style="max-width:900px;margin:0 auto;padding:28px 24px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px" id="templates-grid"></div>
       </div>
     </div>
 
@@ -781,6 +799,7 @@ let state={
   isPro:false,
   books:[],
   currentBook:null,
+  ideas:[],
   // wizard
   wGenres:[],wTitle:'',wTheme:'',wSetting:'',wChars:[{name:'',age:'',appearance:'',character:''}],wLength:'medium',wStyle:'dramatic',wStep:1,
   // chat
@@ -966,6 +985,7 @@ function showScreen(name){
   if(name==='library')renderLibrary();
   if(name==='favorites')renderFavorites();
   if(name==='translate-own')initTranslateOwnScreen();
+  if(name==='templates')renderTemplates();
   if(name==='wizard')renderWizardStep(state.wStep);
 }
 
@@ -1438,6 +1458,152 @@ async function startTranslation(){
 }
 
 // ══════════════════════════════════════════════════════════
+// ŠABLONY
+// ══════════════════════════════════════════════════════════
+const TEMPLATES = [
+  {
+    id:'fantasy-quest',emoji:'⚔️',name:'Fantasy dobrodružství',
+    desc:'Hrdina vydá na epickou výpravu do magického světa plného nebezpečí.',
+    genres:['fantasy','adventure'],
+    title:'Cesta za Světlem',
+    theme:'Mladý kouzelník musí překonat temné síly a zachránit království před zkázou.',
+    setting:'Magický svět s hradními městy, enchantovanými lesy a dávnými ruinami.',
+    chars:[{name:'Elan',age:'22',appearance:'Tmavé vlasy, zelené oči, jizva na tváři',character:'Odvážný, impulsivní, věrný přátelům'}],
+    length:'long',style:'dramatic',
+  },
+  {
+    id:'romance-city',emoji:'💕',name:'Romantika ve městě',
+    desc:'Nečekané setkání dvou lidí změní jejich životy navždy.',
+    genres:['romance','contemporary'],
+    title:'Náhoda nebo osud?',
+    theme:'Dva lidé s komplikovanou minulostí najdou v sobě novou naději na lásku.',
+    setting:'Moderní velkoměsto, kavárny, parky a noční ulice.',
+    chars:[{name:'Anna',age:'28',appearance:'Rusé vlasy, modrooká, vždy s knihou v ruce',character:'Introvertní, citlivá, sarkastická'}],
+    length:'medium',style:'romantic',
+  },
+  {
+    id:'mystery-thriller',emoji:'🔍',name:'Detektivní thriller',
+    desc:'Záhadná vražda, chybějící důkazy a nikdo není tím, čím se zdá.',
+    genres:['mystery','thriller'],
+    title:'Stíny minulosti',
+    theme:'Detektiv vyšetřuje sérii záhadných zmizení, která vedou k jeho vlastní rodině.',
+    setting:'Mlhavé přímořské město, staré domy, temné zátiší.',
+    chars:[{name:'Martin Kovář',age:'45',appearance:'Šedivé spánky, unavené oči, vždy v tmavém kabátě',character:'Analytický, uzavřený, posedlý spravedlností'}],
+    length:'medium',style:'dark',
+  },
+  {
+    id:'scifi-space',emoji:'🚀',name:'Sci-fi vesmír',
+    desc:'Lidstvo kolonizuje galaxii, ale ve vesmíru není daleko k válce.',
+    genres:['scifi'],
+    title:'Poslední hvězda',
+    theme:'Posádka vesmírné lodi objeví signál z planety, která by neměla existovat.',
+    setting:'Vzdálená budoucnost, vesmírné lodě, cizí planety a vesmírné stanice.',
+    chars:[{name:'Kapitánka Nora',age:'38',appearance:'Krátké stříbrné vlasy, kybernetické oko',character:'Chladná, rozhodná, skrývá hlubokou ztrátu'}],
+    length:'long',style:'dramatic',
+  },
+  {
+    id:'horror-gothic',emoji:'👻',name:'Gotický horor',
+    desc:'Starý dům, rodinná kletba a tajemství pohřbené po generace.',
+    genres:['horror'],
+    title:'Dům na kopci',
+    theme:'Rodina se přestěhuje do dědičného sídla a začnou se dít věci, které nelze vysvětlit.',
+    setting:'Viktoriánské sídlo na odlehlém kopci, temné sklepy, rozbité zrcadla.',
+    chars:[{name:'Lucie',age:'16',appearance:'Bledá, černé vlasy, vždy v bílé noční košili',character:'Citlivá, vidí věci, jimž ostatní nevěří'}],
+    length:'medium',style:'dark',
+  },
+  {
+    id:'historical',emoji:'🏰',name:'Historický román',
+    desc:'Dramatický příběh ze středověku plný intrik, lásky a politiky.',
+    genres:['historical','romance'],
+    title:'Dcera krále',
+    theme:'Princezna odmítá domluvené manželství a volí vlastní osud v době plné válek.',
+    setting:'Středověká Evropa, královský dvůr, hrady a bojiště.',
+    chars:[{name:'Isabela',age:'19',appearance:'Zlaté vlasy, hrdé držení těla, zlatý řetěz na krku',character:'Vzdorná, inteligentní, umí šermovat'}],
+    length:'long',style:'dramatic',
+  },
+  {
+    id:'comedy',emoji:'😄',name:'Komedie',
+    desc:'Série katastrofálních nedorozumění, která vedou k neočekávanému šťastnému konci.',
+    genres:['comedy','romance'],
+    title:'Jak jsem omylem zorganizoval svatbu',
+    theme:'Muž omylem přijme zakázku na organizaci svatby a všechno se zkomplikuje.',
+    setting:'Moderní česká vesnice, provizorní sál, chaosu plný víkend.',
+    chars:[{name:'Tomáš',age:'32',appearance:'Uměřeně pohledný, vždy rozcuchaný',character:'Snaživý, nešikovný, zlaté srdce'}],
+    length:'short',style:'humorous',
+  },
+  {
+    id:'coming-of-age',emoji:'🌱',name:'Coming of age',
+    desc:'Příběh dospívání, hledání identity a prvních životních lekcí.',
+    genres:['contemporary','drama'],
+    title:'Léto před vším',
+    theme:'Šestnáctiletý najde starý deník a vydá se stopovat životní příběh záhadné osoby.',
+    setting:'Malé české město, léto, knihovna, polorozpadlý park.',
+    chars:[{name:'Jakub',age:'16',appearance:'Vysoký, brýle, tenisky Nike',character:'Zvídavý, nejistý, sní o velkoměstu'}],
+    length:'medium',style:'lyrical',
+  },
+];
+
+function renderTemplates(){
+  const grid=document.getElementById('templates-grid');
+  if(!grid)return;
+  grid.innerHTML=TEMPLATES.map(t=>`
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:20px;cursor:pointer;transition:all .15s;"
+      onmouseover="this.style.borderColor='rgba(124,58,237,.4)';this.style.transform='translateY(-2px)'"
+      onmouseout="this.style.borderColor='var(--border)';this.style.transform=''"
+      onclick="applyTemplate('${t.id}')">
+      <div style="font-size:32px;margin-bottom:10px">${t.emoji}</div>
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:5px">${t.name}</h3>
+      <p style="font-size:12.5px;color:var(--text2);line-height:1.5;margin-bottom:14px">${t.desc}</p>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px">
+        ${t.genres.map(g=>`<span style="background:rgba(124,58,237,.12);color:var(--purple3);border:1px solid rgba(124,58,237,.2);border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600">${g}</span>`).join('')}
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;font-size:13px">
+        Použít šablonu →
+      </button>
+    </div>`).join('');
+}
+
+function applyTemplate(id){
+  const t=TEMPLATES.find(x=>x.id===id);
+  if(!t)return;
+  // Set wizard state
+  state.wGenres=[...t.genres];
+  state.wTitle=t.title||'';
+  state.wTheme=t.theme||'';
+  state.wSetting=t.setting||'';
+  state.wChars=t.chars?t.chars.map(c=>({...c})):[{name:'',age:'',appearance:'',character:''}];
+  state.wLength=t.length||'medium';
+  state.wStyle=t.style||'dramatic';
+  // Go to wizard step 2 (story) — genres already filled
+  showScreen('wizard');
+  resetWizard();
+  // Apply filled data after reset
+  setTimeout(()=>{
+    // Re-render genre grid with pre-selected genres
+    renderGenreGrid();
+    // Update combo label manually
+    const cl=document.getElementById('genre-combo-label');
+    if(cl){
+      if(state.wGenres.length===2){const gl=genreLabel(state.wGenres);cl.textContent='✨ Kombinace: '+gl.l;}
+      else if(state.wGenres.length===1){const g=genreInfo(state.wGenres[0]);cl.textContent=g.i+' '+g.l;}
+    }
+    document.getElementById('wiz1-next').disabled=false;
+    // Jump to step 2 and fill fields
+    wizNext(2);
+    setTimeout(()=>{
+      const titleEl=document.getElementById('w-title');
+      const themeEl=document.getElementById('w-theme');
+      const settingEl=document.getElementById('w-setting');
+      if(titleEl)titleEl.value=state.wTitle;
+      if(themeEl)themeEl.value=state.wTheme;
+      if(settingEl)settingEl.value=state.wSetting;
+      renderChars();
+    },100);
+  },150);
+  toast('Šablona "'+t.name+'" načtena! 📋','ok');
+}
+
+// ══════════════════════════════════════════════════════════
 // PŘEKLAD VLASTNÍ KNIHY
 // ══════════════════════════════════════════════════════════
 let ownTransFile = null;
@@ -1863,12 +2029,87 @@ function continueReading(){
 }
 
 async function generateIdea(){
-  toast('Generuji nápad...','info');
+  const btn=document.querySelector('.inspire-banner .btn-primary');
+  if(btn){btn.disabled=true;btn.textContent='Generuji...';}
   try{
     const idea=await callClaude([{role:'user',content:'Vygeneruj originální nápad na knihu.'}],
       'Odpověz česky. Stručně: žánr, téma (1 věta), hlavní postava, zajímavý zvrat. Max 3 věty.');
-    toast('💡 '+idea.slice(0,180),'ok');
+    const ideaObj={id:Date.now(),text:idea,createdAt:new Date().toISOString()};
+    state.ideas.unshift(ideaObj);
+    if(state.ideas.length>20)state.ideas=state.ideas.slice(0,20);
+    saveIdeasToStorage();
+    renderIdeas();
+    toast('💡 Nový nápad uložen!','ok');
   }catch(e){toast('Chyba: '+e.message,'err');}
+  if(btn){btn.disabled=false;btn.textContent='Vygenerovat nápad 🎲';}
+}
+
+function saveIdeasToStorage(){
+  try{localStorage.setItem('sf_ideas',JSON.stringify(state.ideas));}catch(e){}
+}
+function loadIdeasFromStorage(){
+  try{const d=localStorage.getItem('sf_ideas');if(d)state.ideas=JSON.parse(d);}catch(e){}
+}
+
+function renderIdeas(){
+  const wrap=document.getElementById('ideas-list');
+  if(!wrap)return;
+  const clearBtn=document.getElementById('ideas-clear-btn');
+  if(clearBtn)clearBtn.style.display=state.ideas.length?'block':'none';
+  if(!state.ideas.length){
+    wrap.innerHTML='<p style="color:var(--text3);font-size:12.5px;text-align:center;padding:12px 0">Zatím žádné nápady. Klikni na tlačítko výše!</p>';
+    return;
+  }
+  wrap.innerHTML=state.ideas.map((idea,i)=>`
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;cursor:pointer;transition:border-color .15s;margin-bottom:8px"
+      onclick="useIdea(${i})" title="Klikni pro použití v průvodci">
+      <div style="font-size:12.5px;color:var(--text);line-height:1.55">${esc(idea.text)}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+        <span style="font-size:11px;color:var(--text3)">${fmtTimeAgo(idea.createdAt)}</span>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm" style="background:rgba(124,58,237,.15);color:var(--purple3);border:1px solid rgba(124,58,237,.25);padding:3px 9px;font-size:11px"
+            onclick="event.stopPropagation();useIdea(${i})">Použít →</button>
+          <button class="btn btn-sm" style="background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.2);padding:3px 7px;font-size:11px"
+            onclick="event.stopPropagation();deleteIdea(${i})">✕</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function deleteIdea(i){
+  state.ideas.splice(i,1);
+  saveIdeasToStorage();
+  renderIdeas();
+}
+
+function useIdea(i){
+  const idea=state.ideas[i];
+  if(!idea)return;
+  showScreen('wizard');resetWizard();
+  setTimeout(()=>{
+    const themeEl=document.getElementById('w-theme');
+    if(themeEl)themeEl.value=idea.text.slice(0,200);
+    toast('Nápad načten do průvodce 💡','ok');
+  },200);
+}
+
+function clearAllIdeas(){
+  if(!state.ideas.length)return;
+  if(!confirm('Vymazat všechny uložené nápady?'))return;
+  state.ideas=[];
+  saveIdeasToStorage();
+  renderIdeas();
+}
+
+function fmtTimeAgo(iso){
+  if(!iso)return'';
+  const diff=Date.now()-new Date(iso).getTime();
+  const m=Math.floor(diff/60000);
+  if(m<1)return'právě teď';
+  if(m<60)return m+'m';
+  const h=Math.floor(m/60);
+  if(h<24)return h+'h';
+  return Math.floor(h/24)+'d';
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1948,6 +2189,8 @@ console.log('%c⚡ StoryForge Admin%c  —  zadej sf.help() pro seznam příkaz�
 
 // Spustíme po načtení DOMu
 window.addEventListener('DOMContentLoaded', async () => {
+  loadIdeasFromStorage();
+  renderIdeas();
   const resetToken = new URLSearchParams(window.location.search).get('reset');
   if(resetToken){
     // Reset flow — zobrazíme auth stránku a modal pro nové heslo
