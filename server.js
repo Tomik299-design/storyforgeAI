@@ -88,61 +88,40 @@ async function findBinByName(name) {
 async function initBins() {
   console.log("🔄 Initializing JSONBin...");
   console.log("   JSONBIN_KEY set:", !!JSONBIN_KEY);
+
+  // BIN_USERS a BIN_BOOKS MUSÍ být nastaveny v env — jinak se data ztratí při restartu!
+  BIN_USERS = process.env.BIN_USERS || null;
+  BIN_BOOKS = process.env.BIN_BOOKS || null;
+
   try {
-    // 1. Najdi nebo vytvoř meta bin
-    let metaId = process.env.BIN_META || null;
-    if (!metaId) {
-      try { metaId = await findBinByName(META_BIN_NAME); } catch (_) {}
-    }
-
-    let meta = { users: null, books: null };
-
-    if (metaId) {
-      try {
-        meta = await binGet(metaId);
-        console.log("✅ Meta bin nalezen:", metaId);
-      } catch (e) {
-        console.warn("⚠️  Meta bin nečitelný, vytvářím nový:", e.message);
-        metaId = null;
-      }
-    }
-
-    if (!metaId) {
-      console.log("   Vytvářím meta bin...");
-      metaId = await binCreate(META_BIN_NAME, meta);
-      console.log("✅ Meta bin vytvořen:", metaId);
-    }
-
-    // 2. Users bin
-    if (meta.users) {
-      BIN_USERS = meta.users;
-      await binGet(BIN_USERS); // ověření
+    // Pokud už máme obě ID z env, jen ověříme že fungují
+    if (BIN_USERS && BIN_BOOKS) {
+      await binGet(BIN_USERS);
+      await binGet(BIN_BOOKS);
       console.log("✅ Users bin OK:", BIN_USERS);
-    } else {
-      console.log("   Vytvářím users bin...");
+      console.log("✅ Books bin OK:", BIN_BOOKS);
+      console.log("✅ JSONBin plně připraven.");
+      return;
+    }
+
+    // První start — vytvoříme biny a vypíšeme instrukce
+    console.log("⚠️  BIN_USERS/BIN_BOOKS nejsou v env — vytvářím nové biny...");
+    console.log("   !! Po startu MUSÍŠ přidat tato ID do Render env !!");
+
+    if (!BIN_USERS) {
       BIN_USERS = await binCreate("storyforge-users", { users: [] });
       console.log("✅ Users bin vytvořen:", BIN_USERS);
-      meta.users = BIN_USERS;
-      await binSet(metaId, meta);
+      console.log("👉 PŘIDEJ DO RENDER ENV: BIN_USERS=" + BIN_USERS);
     }
-
-    // 3. Books bin
-    if (meta.books) {
-      BIN_BOOKS = meta.books;
-      await binGet(BIN_BOOKS); // ověření
-      console.log("✅ Books bin OK:", BIN_BOOKS);
-    } else {
-      console.log("   Vytvářím books bin...");
+    if (!BIN_BOOKS) {
       BIN_BOOKS = await binCreate("storyforge-books", { books: [] });
       console.log("✅ Books bin vytvořen:", BIN_BOOKS);
-      meta.books = BIN_BOOKS;
-      await binSet(metaId, meta);
+      console.log("👉 PŘIDEJ DO RENDER ENV: BIN_BOOKS=" + BIN_BOOKS);
     }
-
-    console.log("✅ JSONBin plně připraven — žádná manuální konfigurace není potřeba.");
+    console.log("✅ JSONBin připraven. Nezapomeň přidat BIN_USERS a BIN_BOOKS do Render env!");
   } catch (e) {
     console.error("❌ JSONBin init FAILED:", e.message);
-    console.error("   Zkontroluj JSONBIN_KEY.");
+    console.error("   Zkontroluj JSONBIN_KEY a BIN_USERS/BIN_BOOKS env proměnné.");
   }
 }
 
@@ -426,9 +405,15 @@ app.post("/api/auth/reset-request", async (req, res) => {
   if (!email) return res.status(400).json({ error: "Email required" });
   res.json({ ok: true }); // always 200 — don't reveal if email exists
   try {
+    console.log(`🔑 Reset request pro: ${email}`);
     const db = await binGet(BIN_USERS);
+    console.log(`   Uživatelů v DB: ${db.users.length}`);
     const user = db.users.find(u => u.email === email.toLowerCase().trim());
-    if (!user) return;
+    if (!user) {
+      console.warn(`   ❌ Email nenalezen v DB: ${email.toLowerCase().trim()}`);
+      return;
+    }
+    console.log(`   ✅ Uživatel nalezen: ${user.name}`);
     const token = crypto.randomBytes(32).toString("hex");
     resetTokens.set(token, { email: user.email, expires: Date.now() + 60 * 60 * 1000 });
     const resetUrl = `${APP_URL}?reset=${token}`;
