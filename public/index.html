@@ -1540,8 +1540,22 @@ function checkResetToken(){
 
 renderGenreGrid();renderLengthOpts();renderStyleGrid();renderChars();
 console.log('%c⚡ StoryForge Admin%c  —  zadej sf.help() pro seznam příkazů','background:#7c3aed;color:#fff;padding:3px 8px;border-radius:4px;font-weight:bold','color:#94a3b8');
-checkResetToken();
-tryAutoLogin();
+
+// Spustíme po načtení DOMu
+window.addEventListener('DOMContentLoaded', async () => {
+  const resetToken = new URLSearchParams(window.location.search).get('reset');
+  if(resetToken){
+    // Reset flow — zobrazíme auth stránku a modal pro nové heslo
+    document.getElementById('page-auth').classList.add('active');
+    document.getElementById('page-app').classList.remove('active');
+    document.getElementById('reset-modal').style.display='flex';
+    document.getElementById('reset-step1').style.display='none';
+    document.getElementById('reset-step2').style.display='none';
+    document.getElementById('reset-step3').style.display='block';
+  } else {
+    await tryAutoLogin();
+  }
+});
 </script>
 <!-- UPGRADE MODAL -->
 <div class="upgrade-modal" id="upgrade-modal" style="display:none" onclick="if(event.target===this)closeUpgradeModal()">
