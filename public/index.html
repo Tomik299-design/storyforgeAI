@@ -1383,8 +1383,14 @@ function renderBookRead(book){
     document.head.appendChild(s);
   }
   document.getElementById('book-chapters').innerHTML=book.chapters.map((ch,idx)=>{
-    const showImg=ch.imagePrompt&&idx%2===0; // image every other chapter
+    const showImg=!!ch.imagePrompt; // image for every chapter that has a prompt
     const imgUrl=showImg?`https://image.pollinations.ai/prompt/${encodeURIComponent(ch.imagePrompt+'&nologo=true')}`:'';
+    return `<div class="chapter-block fade-in">
+      <span class="badge badge-purple" style="margin-bottom:10px">Kapitola ${ch.number}</span>
+      <h3 class="chapter-title">${esc(ch.title)}</h3>
+      ${showImg?`<div class="chapter-illustration-wrap"><img class="chapter-illustration" src="${imgUrl}" alt="Ilustrace kapitoly ${ch.number}" loading="lazy" onerror="this.parentElement.style.display='none'"/></div>`:''}
+      <div class="chapter-body">${esc(ch.content)}</div>
+    </div>`;
     return `<div class="chapter-block fade-in">
       <span class="badge badge-purple" style="margin-bottom:10px">Kapitola ${ch.number}</span>
       <h3 class="chapter-title">${esc(ch.title)}</h3>
@@ -1865,8 +1871,12 @@ function renderReaderContent(post) {
     ${post.annotation ? `<p style="background:var(--surface);border-left:3px solid var(--purple);padding:12px 16px;border-radius:0 var(--r) var(--r) 0;font-size:13px;color:var(--text2);line-height:1.7;margin-top:14px">${esc(post.annotation)}</p>` : ''}
   </div>`;
   (post.chapters || []).forEach((ch, i) => {
+    const imgUrl = ch.imagePrompt
+      ? `https://image.pollinations.ai/prompt/${encodeURIComponent(ch.imagePrompt+'&nologo=true')}`
+      : '';
     html += `<div style="margin-bottom:32px">
       <h2 style="font-size:18px;font-weight:700;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)">Kapitola ${ch.number||i+1}: ${esc(ch.title||'')}</h2>
+      ${imgUrl?`<div class="chapter-illustration-wrap" style="margin-bottom:18px"><img class="chapter-illustration" src="${imgUrl}" alt="Ilustrace kapitoly ${ch.number||i+1}" loading="lazy" onerror="this.parentElement.style.display='none'"/></div>`:''}
       <div style="font-size:14px;line-height:1.85;color:var(--text);white-space:pre-wrap">${esc(ch.content||'')}</div>
     </div>`;
   });
