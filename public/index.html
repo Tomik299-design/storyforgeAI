@@ -1241,7 +1241,8 @@ async function startGeneration(){
   const genreTxt=gl.l; // e.g. "Fantasy × Dark Romance"
   const genreIds=wGenres.join(','); // stored in book
   const title=wTitle||'Bez názvu';
-  const charsTxt=wChars.map((c,i)=>`${c.name||'Postava '+(i+1)}, ${c.age||'?'} let. ${c.appearance}. ${c.character}`).join('\n');
+  const charsTxt=wChars.filter(c=>c.name||c.appearance||c.character).map((c,i)=>`- JMÉNO: ${c.name||'Postava '+(i+1)} | VĚK: ${c.age||'?'} let | VZHLED: ${c.appearance||'—'} | POVAHA: ${c.character||'—'}`).join('\n');
+  const charsNames=wChars.filter(c=>c.name).map(c=>c.name).join(', ');
   const chapCount={short:'6',medium:'12',long:'18',epic:'25'}[wLength]||'12';
   const maxChapPerRun={short:6,medium:12,long:18,epic:25}[wLength]||12;
 
@@ -1249,7 +1250,7 @@ async function startGeneration(){
     setGenPhase(1);genLog('📖 Vytvářím bibli příběhu...');genPct(6);
     const bibleRaw=await callClaude(
       [{role:'user',content:`Žánr:${genreTxt}. Název:"${title}". Téma:${wTheme}. Prostředí:${wSetting}. Postavy:\n${charsTxt}`}],
-      `Vytvoř bibli příběhu jako JSON: {"world":"...","rules":"...","mainConflict":"...","locations":["..."],"themes":["..."]}. Bohatě popis svět a pravidla. Pouze JSON, žádné backticks.`
+      `Vytvoř bibli příběhu jako JSON: {"world":"...","rules":"...","mainConflict":"...","locations":["..."],"themes":["..."],"characters":[{"name":"...","role":"...","arc":"..."}]}. DŮLEŽITÉ: v poli characters použij PŘESNĚ jména postav ze zadání — nepřejmenovávej je. Bohatě popis svět a pravidla. Pouze JSON, žádné backticks.`
     );
     let bible={};try{bible=JSON.parse(bibleRaw.replace(/```json|```/g,'').trim());}catch{bible={world:bibleRaw};}
     genLog('✅ Bible hotova');genPct(20);
@@ -1257,7 +1258,7 @@ async function startGeneration(){
     setGenPhase(2);genLog('🗂️ Tvořím osnovu kapitol...');
     const outlineRaw=await callClaude(
       [{role:'user',content:`Kniha "${title}" (${genreTxt}). Téma:${wTheme}. Prostředí:${wSetting}. Hlavní konflikt: ${bible.mainConflict||wTheme}. Styl:${wStyle}. Počet kapitol: ${chapCount}.`}],
-      `Vytvoř JSON pole přesně ${chapCount} kapitol: [{"number":1,"title":"...","summary":"..."},...]. Každé shrnutí min 2 věty. Pouze JSON.`
+      `Vytvoř JSON pole přesně ${chapCount} kapitol: [{"number":1,"title":"...","summary":"..."},...]. Každé shrnutí min 2 věty. POVINNĚ používej jména postav ze zadání (${charsNames||'dle zadání'}) — nikdy je nepřejmenovávej. Pouze JSON.`
     );
     let chapters=[];
     try{chapters=JSON.parse(outlineRaw.replace(/```json|```/g,'').trim());}
@@ -1285,7 +1286,7 @@ async function startGeneration(){
 
       const content=await callClaude(
         [{role:'user',content:'Napiš kapitolu '+ch.number+' s názvem „'+ch.title+'“. Plán scény: '+ch.summary+'. Prostředí: '+wSetting+'. Bible světa: '+JSON.stringify(bible).slice(0,400)+'. Styl: '+wStyle+'. Postavy: '+charsTxt.slice(0,400)+'.'+prevContext}],
-        `Jsi mistr literárního vypravěčství. Piš výhradně v češtině, stylem "${wStyle}". POVINNĚ minimálně 3000 slov \u2014 toto je tvrdý limit.\n\nKRITICKÁ PRAVIDLA NÁVAZNOSTI (porušení zničí čtenářský zážitek):\n- Začni PŘESNĚ tam kde předchozí kapitola přestala \u2014 stejná scéna, stejný moment, stejná atmosféra\n- NIKDY nepřeskákuj čas ani děj bez plynného přechodu v textu\n- Pokud předchozí kapitola skončila napětím nebo otázkou, tuto kapitolu ZAČNI tím jak se to rozuzluje nebo prohlubuje\n- Postavy si pamatují vše z minulé kapitoly \u2014 jejich emoce, rozhodnutí a vztahy musí být kontinuální\n\nKVALITA TEXTU:\nPlnohodnotná kapitola jako v tištěném románu: detailní popisy prostředí (barvy, vůně, zvuky, textury), hluboká psychologie postav s vnitřními monology, napínavé dialogy s podtextem, akce s důsledky, emoční oblouky. Struktura: přímé navázání na předchozí kapitolu \u2192 rozvíjení napětí \u2192 kulminace \u2192 závěr s háčkem do další kapitoly. Bez záhlaví nebo čísla kapitoly.`
+        `Jsi mistr literárního vypravěčství. Piš výhradně v češtině, stylem "${wStyle}". POVINNĚ minimálně 3000 slov \u2014 toto je tvrdý limit.\n\nABSOLUTNÍ PRAVIDLO JMEN POSTAV (nejdůležitější pravidlo — nikdy ho neporušuj):\n- Hlavní postavy se VŽDY jmenují přesně takto: ${charsNames||'dle zadání'}\n- NIKDY nevymýšlej jiná jména, NIKDY nepřejmenovávej postavy, NIKDY nepoužívej jiná jména než ta co jsou uvedena\n- I když píšeš dialogy, popisy nebo vnitřní monology — vždy používej POUZE tato jména\n\nKRITICKÁ PRAVIDLA NÁVAZNOSTI (porušení zničí čtenářský zážitek):\n- Začni PŘESNĚ tam kde předchozí kapitola přestala \u2014 stejná scéna, stejný moment, stejná atmosféra\n- NIKDY nepřeskákuj čas ani děj bez plynného přechodu v textu\n- Pokud předchozí kapitola skončila napětím nebo otázkou, tuto kapitolu ZAČNI tím jak se to rozuzluje nebo prohlubuje\n- Postavy si pamatují vše z minulé kapitoly \u2014 jejich emoce, rozhodnutí a vztahy musí být kontinuální\n\nKVALITA TEXTU:\nPlnohodnotná kapitola jako v tištěném románu: detailní popisy prostředí (barvy, vůně, zvuky, textury), hluboká psychologie postav s vnitřními monology, napínavé dialogy s podtextem, akce s důsledky, emoční oblouky. Struktura: přímé navázání na předchozí kapitolu \u2192 rozvíjení napětí \u2192 kulminace \u2192 závěr s háčkem do další kapitoly. Bez záhlaví nebo čísla kapitoly.`
       );
 
       // Generate image prompt for this chapter
@@ -2480,16 +2481,19 @@ async function generateIdea(){
   if(btn){btn.disabled=true;btn.textContent='Generuji...';}
   try{
     const raw=await callClaude([{role:'user',content:'Vygeneruj originální nápad na knihu.'}],
-      'Odpověz POUZE JSON objektem (bez markdown backticks), žádný jiný text. Formát: {"title":"Název knihy","genre":"žánr","theme":"Téma a děj v 1-2 větách","character":"Hlavní postava — jméno, věk, vlastnost","twist":"Nečekaný zvrat v jedné větě"}. Vše česky, kreativně.');
+      'Odpověz POUZE JSON objektem (bez markdown backticks), žádný jiný text. Formát: {"title":"Název knihy","genre":"žánr","theme":"Téma a děj v 1-2 větách","setting":"Prostředí příběhu — kde a kdy se odehrává","characters":[{"name":"Jméno","age":"věk","appearance":"vzhled 1 věta","character":"povaha 1 věta"},{"name":"Jméno2","age":"věk","appearance":"vzhled","character":"povaha"}],"twist":"Nečekaný zvrat v jedné větě"}. Vygeneruj 2 hlavní postavy. Vše česky, kreativně.');
     let parsed;
     try{
       const clean=raw.replace(/```json|```/g,'').trim();
       parsed=JSON.parse(clean);
     }catch(e){
-      // fallback — AI nevrátilo JSON, ulož jako prostý text
-      parsed={title:'',genre:'',theme:raw,character:'',twist:''};
+      parsed={title:'',genre:'',theme:raw,setting:'',characters:[],twist:''};
     }
-    const ideaObj={id:Date.now(),title:parsed.title||'',genre:parsed.genre||'',theme:parsed.theme||'',character:parsed.character||'',twist:parsed.twist||'',text:parsed.title?(parsed.title+' — '+parsed.theme):parsed.theme,createdAt:new Date().toISOString()};
+    // normalize characters — support both old 'character' string and new 'characters' array
+    const parsedChars=Array.isArray(parsed.characters)&&parsed.characters.length
+      ? parsed.characters
+      : (parsed.character ? [{name:'',age:'',appearance:'',character:parsed.character}] : []);
+    const ideaObj={id:Date.now(),title:parsed.title||'',genre:parsed.genre||'',theme:parsed.theme||'',setting:parsed.setting||'',characters:parsedChars,twist:parsed.twist||'',text:parsed.title?(parsed.title+' — '+parsed.theme):parsed.theme,createdAt:new Date().toISOString()};
     state.ideas.unshift(ideaObj);
     if(state.ideas.length>20)state.ideas=state.ideas.slice(0,20);
     saveIdeasToStorage();
@@ -2521,7 +2525,8 @@ function renderIdeas(){
       ${idea.title?`<div style="font-size:13.5px;font-weight:700;color:var(--text);margin-bottom:3px">📖 ${esc(idea.title)}</div>`:''}
       ${idea.genre?`<div style="font-size:11px;color:var(--purple3);font-weight:600;margin-bottom:5px;background:rgba(124,58,237,.12);display:inline-block;padding:1px 8px;border-radius:20px;border:1px solid rgba(124,58,237,.2)">${esc(idea.genre)}</div>`:''}
       <div style="font-size:12.5px;color:var(--text2);line-height:1.55">${esc(idea.theme||idea.text)}</div>
-      ${idea.character?`<div style="font-size:11.5px;color:var(--text3);margin-top:4px">👤 ${esc(idea.character)}</div>`:''}
+      ${(idea.characters&&idea.characters.length)?idea.characters.map(c=>`<div style="font-size:11.5px;color:var(--text3);margin-top:3px">👤 <b style="color:var(--text2)">${esc(c.name||'?')}</b>${c.age?' · '+esc(c.age)+' let':''} — ${esc(c.character||c.appearance||'')}</div>`).join(''):(idea.character?`<div style="font-size:11.5px;color:var(--text3);margin-top:4px">👤 ${esc(idea.character)}</div>`:'')}
+      ${idea.setting?`<div style="font-size:11.5px;color:var(--text3);margin-top:3px">🌍 ${esc(idea.setting)}</div>`:''}
       ${idea.twist?`<div style="font-size:11.5px;color:var(--text3);margin-top:2px">🌀 ${esc(idea.twist)}</div>`:''}
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
         <span style="font-size:11px;color:var(--text3)">${fmtTimeAgo(idea.createdAt)}</span>
@@ -2546,25 +2551,45 @@ function useIdea(i){
   if(!idea)return;
   showScreen('wizard');resetWizard();
   setTimeout(()=>{
+    // Title
     const titleEl=document.getElementById('w-title');
-    const themeEl=document.getElementById('w-theme');
     if(titleEl&&idea.title)titleEl.value=idea.title;
+
+    // Theme + twist
+    const themeEl=document.getElementById('w-theme');
     if(themeEl){
       let themeText=idea.theme||'';
-      if(idea.character)themeText+=(themeText?'\n':'')+'Hlavní postava: '+idea.character;
-      if(idea.twist)themeText+=(themeText?'\n':'')+'Zvrat: '+idea.twist;
+      if(idea.twist)themeText+=(themeText?' ':'')+'Zvrat: '+idea.twist;
       themeEl.value=themeText.slice(0,300);
     }
-    // prefill genre if recognized
+
+    // Setting
+    const settingEl=document.getElementById('w-setting');
+    if(settingEl&&idea.setting)settingEl.value=idea.setting;
+
+    // Characters — support both new array and old string
+    const chars=Array.isArray(idea.characters)&&idea.characters.length
+      ? idea.characters.map(c=>({
+          name:c.name||'',
+          age:c.age||'',
+          appearance:c.appearance||'',
+          character:c.character||''
+        }))
+      : [{name:'',age:'',appearance:'',character:idea.character||''}];
+    state.wChars=chars;
+    if(typeof renderChars==='function')renderChars();
+
+    // Genre prefill
     if(idea.genre){
       const genreMap={'fantasy':'fantasy','romance':'romance','romantika':'romance','thriller':'thriller','horor':'horror','horror':'horror','scifi':'scifi','sci-fi':'scifi','historický':'historical','komedie':'comedy','drama':'drama'};
       const gKey=Object.keys(genreMap).find(k=>idea.genre.toLowerCase().includes(k));
       if(gKey){
         const gVal=genreMap[gKey];
         if(!state.wGenres.includes(gVal))state.wGenres=[gVal];
-        renderGenreGrid&&renderGenreGrid();
+        if(typeof renderGenreGrid==='function')renderGenreGrid();
       }
     }
+
     toast('Nápad načten do průvodce 💡','ok');
   },200);
 }
