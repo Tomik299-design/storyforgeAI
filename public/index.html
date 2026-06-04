@@ -367,6 +367,9 @@ select.input{cursor:pointer;}
       <div class="nav-item" onclick="showScreen('translate-own')" data-screen="translate-own">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 5h12M9 3v2"/><path d="M5 7c0 5.523 4.477 10 10 10"/><path d="M7 9c0 3.866 2.686 7 6 7"/><path d="M15 17l3-3 3 3M18 20v-6"/></svg>Přeložit knihu
       </div>
+      <div class="nav-item" onclick="showScreen('community')" data-screen="community">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Komunita
+      </div>
       <div class="nav-section">Nedávno otevřené</div>
       <div id="nav-recent"></div>
     </div>
@@ -577,6 +580,88 @@ select.input{cursor:pointer;}
       </div>
     </div>
 
+    <!-- ── COMMUNITY ── -->
+    <div class="screen" id="screen-community">
+      <div class="topbar">
+        <div style="flex:1">
+          <h2>Komunita 👥</h2>
+          <p>Sdílej svou knihu a čti díla ostatních</p>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="openShareModal()" id="share-my-book-btn" style="display:none">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>Sdílet knihu
+        </button>
+      </div>
+
+      <!-- Tabs -->
+      <div style="padding:0 20px;border-bottom:1px solid var(--border);display:flex;gap:4px">
+        <button class="btn btn-sm" id="ctab-feed" onclick="switchCommunityTab('feed')"
+          style="border-radius:0;border-bottom:2px solid var(--purple);color:var(--purple3);background:none;font-weight:600;padding:10px 14px">Nové příspěvky</button>
+        <button class="btn btn-sm" id="ctab-popular" onclick="switchCommunityTab('popular')"
+          style="border-radius:0;border-bottom:2px solid transparent;color:var(--text2);background:none;padding:10px 14px">Nejoblíbenější</button>
+        <button class="btn btn-sm" id="ctab-mine" onclick="switchCommunityTab('mine')"
+          style="border-radius:0;border-bottom:2px solid transparent;color:var(--text2);background:none;padding:10px 14px">Moje sdílené</button>
+      </div>
+
+      <div class="content" style="padding:20px 24px">
+        <div id="community-loading" style="text-align:center;padding:60px 0;color:var(--text3)">
+          <div style="font-size:32px;margin-bottom:10px">⏳</div>Načítám příspěvky...
+        </div>
+        <div id="community-empty" style="display:none;text-align:center;padding:60px 0;color:var(--text3)">
+          <div style="font-size:40px;margin-bottom:12px">📚</div>
+          <p style="font-size:14px;font-weight:600;margin-bottom:6px">Zatím žádné příspěvky</p>
+          <p style="font-size:12.5px">Buď první, kdo sdílí svou knihu!</p>
+        </div>
+        <div id="community-feed" style="display:none;display:grid;gap:16px;max-width:720px;margin:0 auto"></div>
+      </div>
+    </div>
+
+    <!-- Share modal -->
+    <div id="share-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center">
+      <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r2);padding:28px;width:min(480px,92vw);max-height:85vh;overflow-y:auto">
+        <h3 style="font-size:16px;font-weight:700;margin-bottom:16px">📤 Sdílet knihu</h3>
+        <div style="margin-bottom:14px">
+          <label class="label">Vyber knihu</label>
+          <select class="input" id="share-book-select" onchange="updateSharePreview()"></select>
+        </div>
+        <div id="share-preview" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:14px;font-size:12.5px">
+          <div style="font-weight:700;font-size:14px;margin-bottom:3px" id="share-preview-title"></div>
+          <div style="color:var(--text3);margin-bottom:6px" id="share-preview-meta"></div>
+          <div style="color:var(--text2);line-height:1.5" id="share-preview-annotation"></div>
+        </div>
+        <div style="margin-bottom:18px">
+          <label class="label">Vzkaz komunitě <span style="color:var(--text3)">(nepovinné)</span></label>
+          <textarea class="input" id="share-message" rows="2" maxlength="300" placeholder="Napiš pár slov o své knize..." style="resize:none"></textarea>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="closeShareModal()">Zrušit</button>
+          <button class="btn btn-primary" style="flex:2;justify-content:center" id="share-submit-btn" onclick="submitShare()">📤 Sdílet</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Community book reader modal -->
+    <div id="community-reader" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:200;overflow-y:auto">
+      <div style="max-width:680px;margin:0 auto;padding:24px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+          <button class="btn btn-ghost btn-sm" onclick="closeCommunityReader()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>Zpět
+          </button>
+          <div id="cr-like-btn-wrap"></div>
+        </div>
+        <div id="community-reader-content"></div>
+        <!-- Comments -->
+        <div style="margin-top:40px;border-top:1px solid var(--border);padding-top:24px">
+          <h3 style="font-size:15px;font-weight:700;margin-bottom:14px">💬 Komentáře <span id="cr-comment-count" style="color:var(--text3);font-weight:400"></span></h3>
+          <div id="cr-comments-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px"></div>
+          <div id="cr-comment-form" style="display:none;gap:8px;display:none">
+            <textarea class="input" id="cr-comment-input" rows="2" placeholder="Napiš komentář..." maxlength="500" style="resize:none"></textarea>
+            <button class="btn btn-primary btn-sm" onclick="submitComment()" style="align-self:flex-end">Odeslat</button>
+          </div>
+          <div id="cr-login-prompt" style="display:none;color:var(--text3);font-size:12.5px">Pro komentování se přihlas.</div>
+        </div>
+      </div>
+    </div>
+
     <!-- ── TEMPLATES ── -->
     <div class="screen" id="screen-templates">
       <div class="topbar">
@@ -705,6 +790,9 @@ select.input{cursor:pointer;}
           </button>
           <button class="btn btn-outline btn-sm" onclick="showTranslateModal()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/></svg>Přeložit
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="shareCurrentBook()" id="book-share-btn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>Sdílet
           </button>
         </div>
       </div>
@@ -986,6 +1074,7 @@ function showScreen(name){
   if(name==='favorites')renderFavorites();
   if(name==='translate-own')initTranslateOwnScreen();
   if(name==='templates')renderTemplates();
+  if(name==='community')initCommunityScreen();
   if(name==='wizard')renderWizardStep(state.wStep);
 }
 
@@ -1601,6 +1690,333 @@ function applyTemplate(id){
     },100);
   },150);
   toast('Šablona "'+t.name+'" načtena! 📋','ok');
+}
+
+// ══════════════════════════════════════════════════════════
+// KOMUNITA
+// ══════════════════════════════════════════════════════════
+let communityTab = 'feed';
+let communityPosts = [];
+let currentReaderPost = null;
+
+async function initCommunityScreen() {
+  const shareBtn = document.getElementById('share-my-book-btn');
+  if (shareBtn) shareBtn.style.display = authToken ? 'flex' : 'none';
+  await loadCommunityPosts();
+}
+
+async function loadCommunityPosts() {
+  const loading = document.getElementById('community-loading');
+  const feed = document.getElementById('community-feed');
+  const empty = document.getElementById('community-empty');
+  loading.style.display = 'block';
+  feed.style.display = 'none';
+  empty.style.display = 'none';
+  try {
+    const data = await apiFetch('/api/community');
+    communityPosts = data.posts || [];
+    renderCommunityFeed();
+  } catch(e) {
+    loading.innerHTML = '<div style="text-align:center;padding:60px 0;color:var(--text3)">Chyba načítání komunity: ' + esc(e.message) + '</div>';
+  }
+}
+
+function switchCommunityTab(tab) {
+  communityTab = tab;
+  ['feed','popular','mine'].forEach(t => {
+    const el = document.getElementById('ctab-' + t);
+    if (!el) return;
+    if (t === tab) {
+      el.style.borderBottomColor = 'var(--purple)';
+      el.style.color = 'var(--purple3)';
+      el.style.fontWeight = '600';
+    } else {
+      el.style.borderBottomColor = 'transparent';
+      el.style.color = 'var(--text2)';
+      el.style.fontWeight = '400';
+    }
+  });
+  renderCommunityFeed();
+}
+
+function renderCommunityFeed() {
+  const loading = document.getElementById('community-loading');
+  const feed = document.getElementById('community-feed');
+  const empty = document.getElementById('community-empty');
+  loading.style.display = 'none';
+
+  let posts = [...communityPosts];
+  if (communityTab === 'popular') posts.sort((a,b) => (b.likes||[]).length - (a.likes||[]).length);
+  if (communityTab === 'mine') posts = posts.filter(p => p.userId === state.user?.id);
+
+  if (!posts.length) {
+    feed.style.display = 'none';
+    empty.style.display = 'block';
+    empty.querySelector('p').textContent = communityTab === 'mine' ? 'Zatím jsi nesdílel/a žádnou knihu.' : 'Zatím žádné příspěvky.';
+    return;
+  }
+
+  empty.style.display = 'none';
+  feed.style.display = 'grid';
+  const myId = state.user?.id;
+  feed.innerHTML = posts.map(p => {
+    const liked = (p.likes||[]).includes(myId);
+    const isOwn = p.userId === myId;
+    const genreArr = Array.isArray(p.genre) ? p.genre : String(p.genre||'').split(',').filter(Boolean);
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:20px;transition:border-color .15s"
+        onmouseover="this.style.borderColor='rgba(124,58,237,.3)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="display:flex;align-items:flex-start;gap:12px">
+        <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,rgba(124,58,237,.3),rgba(76,29,149,.2));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">
+          ${p.authorName?.[0]?.toUpperCase()||'?'}
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:13px">${esc(p.authorName||'Anonym')}</div>
+          <div style="font-size:11px;color:var(--text3)">${fmtTimeAgo(p.sharedAt)}</div>
+        </div>
+        ${isOwn ? `<button class="btn btn-sm" style="background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.2);padding:3px 9px;font-size:11px" onclick="unsharePost('${p.id}')">Zrušit sdílení</button>` : ''}
+      </div>
+      ${p.message ? `<p style="font-size:12.5px;color:var(--text2);margin:10px 0 0;font-style:italic">"${esc(p.message)}"</p>` : ''}
+      <div style="margin-top:12px;background:var(--surface2);border-radius:var(--r);padding:14px;cursor:pointer" onclick="openCommunityReader('${p.id}')">
+        <div style="font-size:15px;font-weight:700;margin-bottom:3px">${esc(p.title)}</div>
+        ${p.subtitle ? `<div style="font-size:12px;color:var(--text3);margin-bottom:6px">${esc(p.subtitle)}</div>` : ''}
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">
+          ${genreArr.map(g=>`<span style="background:rgba(124,58,237,.12);color:var(--purple3);border:1px solid rgba(124,58,237,.2);border-radius:20px;padding:2px 8px;font-size:11px">${esc(g)}</span>`).join('')}
+          <span style="background:var(--surface3);color:var(--text3);border-radius:20px;padding:2px 8px;font-size:11px">${p.chapterCount||0} kapitol</span>
+          <span style="background:var(--surface3);color:var(--text3);border-radius:20px;padding:2px 8px;font-size:11px">${(p.wordCount||0).toLocaleString()} slov</span>
+        </div>
+        ${p.annotation ? `<p style="font-size:12.5px;color:var(--text2);line-height:1.5;margin:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${esc(p.annotation)}</p>` : ''}
+        <div style="margin-top:10px;font-size:12px;color:var(--purple3);font-weight:600">Číst knihu →</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;margin-top:12px">
+        <button class="btn btn-sm" style="background:${liked?'rgba(239,68,68,.15)':'var(--surface2)'};color:${liked?'var(--red)':'var(--text2)'};border:1px solid ${liked?'rgba(239,68,68,.3)':'var(--border)'};padding:4px 12px;font-size:12px;gap:5px"
+          onclick="toggleLike('${p.id}',this)">
+          ${liked?'❤️':'🤍'} <span class="like-count">${(p.likes||[]).length}</span>
+        </button>
+        <button class="btn btn-sm" style="background:var(--surface2);color:var(--text2);border:1px solid var(--border);padding:4px 12px;font-size:12px;gap:5px"
+          onclick="openCommunityReader('${p.id}',true)">
+          💬 <span>${(p.comments||[]).length}</span>
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function toggleLike(postId, btn) {
+  if (!authToken) { toast('Pro lajkování se přihlas', 'error'); return; }
+  try {
+    const data = await apiFetch('/api/community/' + postId + '/like', { method:'POST', body:'{}' });
+    const post = communityPosts.find(p => p.id === postId);
+    if (post) {
+      post.likes = post.likes || [];
+      const myId = state.user.id;
+      if (data.liked) { if (!post.likes.includes(myId)) post.likes.push(myId); }
+      else { post.likes = post.likes.filter(id => id !== myId); }
+    }
+    // Update button
+    const liked = data.liked;
+    btn.style.background = liked ? 'rgba(239,68,68,.15)' : 'var(--surface2)';
+    btn.style.color = liked ? 'var(--red)' : 'var(--text2)';
+    btn.style.borderColor = liked ? 'rgba(239,68,68,.3)' : 'var(--border)';
+    btn.innerHTML = (liked ? '❤️' : '🤍') + ' <span class="like-count">' + data.likes + '</span>';
+    // Update reader like btn if open
+    if (currentReaderPost?.id === postId) renderReaderLikeBtn(data.likes, data.liked, postId);
+  } catch(e) { toast('Chyba: ' + e.message, 'error'); }
+}
+
+async function openCommunityReader(postId, scrollToComments) {
+  const reader = document.getElementById('community-reader');
+  reader.style.display = 'block';
+  document.body.style.overflow = 'hidden';
+  document.getElementById('community-reader-content').innerHTML = '<div style="text-align:center;padding:60px;color:var(--text3)">⏳ Načítám...</div>';
+  try {
+    const post = await apiFetch('/api/community/' + postId);
+    currentReaderPost = post;
+    renderReaderContent(post);
+    if (scrollToComments) setTimeout(()=>{
+      const el = document.querySelector('#community-reader .border-top');
+      if(el) el.scrollIntoView({behavior:'smooth'});
+    }, 200);
+  } catch(e) {
+    document.getElementById('community-reader-content').innerHTML = '<p style="color:var(--red)">Chyba: ' + esc(e.message) + '</p>';
+  }
+}
+
+function closeCommunityReader() {
+  document.getElementById('community-reader').style.display = 'none';
+  document.body.style.overflow = '';
+  currentReaderPost = null;
+}
+
+function renderReaderContent(post) {
+  const myId = state.user?.id;
+  const liked = (post.likes||[]).includes(myId);
+  // Like btn
+  renderReaderLikeBtn((post.likes||[]).length, liked, post.id);
+  // Main content
+  const genreArr = Array.isArray(post.genre) ? post.genre : String(post.genre||'').split(',').filter(Boolean);
+  let html = `<div style="margin-bottom:28px">
+    <h1 style="font-size:26px;font-weight:800;margin-bottom:5px">${esc(post.title)}</h1>
+    ${post.subtitle ? `<div style="font-size:15px;color:var(--text3);margin-bottom:10px">${esc(post.subtitle)}</div>` : ''}
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
+      ${genreArr.map(g=>`<span style="background:rgba(124,58,237,.12);color:var(--purple3);border:1px solid rgba(124,58,237,.2);border-radius:20px;padding:3px 10px;font-size:12px">${esc(g)}</span>`).join('')}
+      <span style="background:var(--surface2);color:var(--text3);border-radius:20px;padding:3px 10px;font-size:12px">${post.chapterCount||0} kapitol · ${(post.wordCount||0).toLocaleString()} slov</span>
+    </div>
+    <div style="font-size:13px;color:var(--text2)">✍️ <strong>${esc(post.authorName||'Anonym')}</strong> · sdíleno ${fmtTimeAgo(post.sharedAt)}</div>
+    ${post.annotation ? `<p style="background:var(--surface);border-left:3px solid var(--purple);padding:12px 16px;border-radius:0 var(--r) var(--r) 0;font-size:13px;color:var(--text2);line-height:1.7;margin-top:14px">${esc(post.annotation)}</p>` : ''}
+  </div>`;
+  (post.chapters || []).forEach((ch, i) => {
+    html += `<div style="margin-bottom:32px">
+      <h2 style="font-size:18px;font-weight:700;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)">Kapitola ${ch.number||i+1}: ${esc(ch.title||'')}</h2>
+      <div style="font-size:14px;line-height:1.85;color:var(--text);white-space:pre-wrap">${esc(ch.content||'')}</div>
+    </div>`;
+  });
+  document.getElementById('community-reader-content').innerHTML = html;
+  // Render comments
+  renderComments(post);
+}
+
+function renderReaderLikeBtn(count, liked, postId) {
+  document.getElementById('cr-like-btn-wrap').innerHTML = `
+    <button class="btn btn-sm" style="background:${liked?'rgba(239,68,68,.15)':'var(--surface2)'};color:${liked?'var(--red)':'var(--text2)'};border:1px solid ${liked?'rgba(239,68,68,.3)':'var(--border)'};padding:5px 14px;gap:6px"
+      onclick="toggleLikeFromReader('${postId}',this)">
+      ${liked?'❤️':'🤍'} ${count}
+    </button>`;
+}
+
+async function toggleLikeFromReader(postId, btn) {
+  if (!authToken) { toast('Pro lajkování se přihlas', 'error'); return; }
+  try {
+    const data = await apiFetch('/api/community/' + postId + '/like', { method:'POST', body:'{}' });
+    if (currentReaderPost) {
+      const myId = state.user.id;
+      if (data.liked) { if (!(currentReaderPost.likes||[]).includes(myId)) { currentReaderPost.likes = currentReaderPost.likes||[]; currentReaderPost.likes.push(myId); } }
+      else { currentReaderPost.likes = (currentReaderPost.likes||[]).filter(id=>id!==myId); }
+    }
+    renderReaderLikeBtn(data.likes, data.liked, postId);
+    // Update feed card
+    const post = communityPosts.find(p=>p.id===postId);
+    if(post){ const myId=state.user.id; if(data.liked){if(!post.likes.includes(myId))post.likes.push(myId);}else{post.likes=post.likes.filter(id=>id!==myId);} }
+    renderCommunityFeed();
+  } catch(e) { toast('Chyba: ' + e.message, 'error'); }
+}
+
+function renderComments(post) {
+  const myId = state.user?.id;
+  const list = document.getElementById('cr-comments-list');
+  const countEl = document.getElementById('cr-comment-count');
+  const form = document.getElementById('cr-comment-form');
+  const loginPrompt = document.getElementById('cr-login-prompt');
+  const comments = post.comments || [];
+  countEl.textContent = '(' + comments.length + ')';
+  if (authToken) { form.style.display = 'flex'; form.style.flexDirection = 'column'; loginPrompt.style.display = 'none'; }
+  else { form.style.display = 'none'; loginPrompt.style.display = 'block'; }
+  if (!comments.length) {
+    list.innerHTML = '<p style="color:var(--text3);font-size:12.5px">Zatím žádné komentáře. Buď první!</p>';
+    return;
+  }
+  list.innerHTML = comments.map(c => `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:11px 14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+        <div style="font-size:12.5px;font-weight:700">${esc(c.authorName||'Anonym')} <span style="color:var(--text3);font-weight:400">· ${fmtTimeAgo(c.createdAt)}</span></div>
+        ${c.userId===myId ? `<button onclick="deleteComment('${post.id}','${c.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:0">✕</button>` : ''}
+      </div>
+      <div style="font-size:13px;color:var(--text);line-height:1.5">${esc(c.text)}</div>
+    </div>`).join('');
+}
+
+async function submitComment() {
+  const input = document.getElementById('cr-comment-input');
+  const text = input.value.trim();
+  if (!text || !currentReaderPost) return;
+  try {
+    const data = await apiFetch('/api/community/' + currentReaderPost.id + '/comment', {
+      method:'POST', body: JSON.stringify({ text })
+    });
+    if (!currentReaderPost.comments) currentReaderPost.comments = [];
+    currentReaderPost.comments.push(data.comment);
+    // Update feed
+    const feedPost = communityPosts.find(p=>p.id===currentReaderPost.id);
+    if(feedPost){ if(!feedPost.comments)feedPost.comments=[]; feedPost.comments.push(data.comment); }
+    renderComments(currentReaderPost);
+    renderCommunityFeed();
+    input.value = '';
+  } catch(e) { toast('Chyba: ' + e.message, 'error'); }
+}
+
+async function deleteComment(postId, commentId) {
+  try {
+    await apiFetch('/api/community/' + postId + '/comment/' + commentId, { method:'DELETE' });
+    if (currentReaderPost) {
+      currentReaderPost.comments = (currentReaderPost.comments||[]).filter(c=>c.id!==commentId);
+      renderComments(currentReaderPost);
+    }
+    const feedPost = communityPosts.find(p=>p.id===postId);
+    if(feedPost){ feedPost.comments=(feedPost.comments||[]).filter(c=>c.id!==commentId); }
+    renderCommunityFeed();
+  } catch(e) { toast('Chyba: ' + e.message, 'error'); }
+}
+
+// ── SHARE MODAL ───────────────────────────────────────────
+function openShareModal(preselectedBookId) {
+  if (!authToken) { toast('Pro sdílení se přihlas', 'error'); return; }
+  const modal = document.getElementById('share-modal');
+  const sel = document.getElementById('share-book-select');
+  sel.innerHTML = '<option value="">— Vyber knihu —</option>' +
+    state.books.map(b=>`<option value="${b.id}" ${String(b.id)===String(preselectedBookId)?'selected':''}>${esc(b.title)}</option>`).join('');
+  document.getElementById('share-message').value = '';
+  modal.style.display = 'flex';
+  if (preselectedBookId) updateSharePreview();
+}
+
+function closeShareModal() {
+  document.getElementById('share-modal').style.display = 'none';
+}
+
+function updateSharePreview() {
+  const sel = document.getElementById('share-book-select');
+  const bookId = sel.value;
+  const preview = document.getElementById('share-preview');
+  if (!bookId) { preview.style.display = 'none'; return; }
+  const book = state.books.find(b => String(b.id) === String(bookId));
+  if (!book) return;
+  document.getElementById('share-preview-title').textContent = book.title;
+  const genreArr = Array.isArray(book.genre) ? book.genre : String(book.genre||'').split(',').filter(Boolean);
+  document.getElementById('share-preview-meta').textContent = genreArr.join(', ') + ' · ' + (book.chapters||[]).length + ' kapitol · ' + (book.wordCount||0).toLocaleString() + ' slov';
+  document.getElementById('share-preview-annotation').textContent = book.annotation || '(bez anotace)';
+  preview.style.display = 'block';
+}
+
+async function submitShare() {
+  const bookId = document.getElementById('share-book-select').value;
+  if (!bookId) { toast('Vyber knihu', 'error'); return; }
+  const message = document.getElementById('share-message').value.trim();
+  const btn = document.getElementById('share-submit-btn');
+  btn.disabled = true; btn.textContent = '⏳ Sdílím...';
+  try {
+    await apiFetch('/api/community', { method:'POST', body: JSON.stringify({ bookId, message }) });
+    toast('Kniha sdílena s komunitou! 🎉', 'ok');
+    closeShareModal();
+    showScreen('community');
+    await loadCommunityPosts();
+  } catch(e) {
+    toast('Chyba: ' + e.message, 'error');
+  }
+  btn.disabled = false; btn.textContent = '📤 Sdílet';
+}
+
+function shareCurrentBook() {
+  if (!state.currentBook) return;
+  openShareModal(state.currentBook.id);
+}
+
+async function unsharePost(postId) {
+  if (!confirm('Zrušit sdílení této knihy?')) return;
+  try {
+    await apiFetch('/api/community/' + postId, { method:'DELETE' });
+    communityPosts = communityPosts.filter(p=>p.id!==postId);
+    renderCommunityFeed();
+    toast('Sdílení zrušeno', 'ok');
+  } catch(e) { toast('Chyba: ' + e.message, 'error'); }
 }
 
 // ══════════════════════════════════════════════════════════
