@@ -2452,9 +2452,17 @@ async function generateIdea(){
   const btn=document.querySelector('.inspire-banner .btn-primary');
   if(btn){btn.disabled=true;btn.textContent='Generuji...';}
   try{
-    const idea=await callClaude([{role:'user',content:'Vygeneruj originální nápad na knihu.'}],
-      'Odpověz česky. Stručně: žánr, téma (1 věta), hlavní postava, zajímavý zvrat. Max 3 věty.');
-    const ideaObj={id:Date.now(),text:idea,createdAt:new Date().toISOString()};
+    const raw=await callClaude([{role:'user',content:'Vygeneruj originální nápad na knihu.'}],
+      'Odpověz POUZE JSON objektem (bez markdown backticks), žádný jiný text. Formát: {"title":"Název knihy","genre":"žánr","theme":"Téma a děj v 1-2 větách","character":"Hlavní postava — jméno, věk, vlastnost","twist":"Nečekaný zvrat v jedné větě"}. Vše česky, kreativně.');
+    let parsed;
+    try{
+      const clean=raw.replace(/```json|```/g,'').trim();
+      parsed=JSON.parse(clean);
+    }catch(e){
+      // fallback — AI nevrátilo JSON, ulož jako prostý text
+      parsed={title:'',genre:'',theme:raw,character:'',twist:''};
+    }
+    const ideaObj={id:Date.now(),title:parsed.title||'',genre:parsed.genre||'',theme:parsed.theme||'',character:parsed.character||'',twist:parsed.twist||'',text:parsed.title?(parsed.title+' — '+parsed.theme):parsed.theme,createdAt:new Date().toISOString()};
     state.ideas.unshift(ideaObj);
     if(state.ideas.length>20)state.ideas=state.ideas.slice(0,20);
     saveIdeasToStorage();
@@ -2483,7 +2491,11 @@ function renderIdeas(){
   wrap.innerHTML=state.ideas.map((idea,i)=>`
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;cursor:pointer;transition:border-color .15s;margin-bottom:8px"
       onclick="useIdea(${i})" title="Klikni pro použití v průvodci">
-      <div style="font-size:12.5px;color:var(--text);line-height:1.55">${esc(idea.text)}</div>
+      ${idea.title?`<div style="font-size:13.5px;font-weight:700;color:var(--text);margin-bottom:3px">📖 ${esc(idea.title)}</div>`:''}
+      ${idea.genre?`<div style="font-size:11px;color:var(--purple3);font-weight:600;margin-bottom:5px;background:rgba(124,58,237,.12);display:inline-block;padding:1px 8px;border-radius:20px;border:1px solid rgba(124,58,237,.2)">${esc(idea.genre)}</div>`:''}
+      <div style="font-size:12.5px;color:var(--text2);line-height:1.55">${esc(idea.theme||idea.text)}</div>
+      ${idea.character?`<div style="font-size:11.5px;color:var(--text3);margin-top:4px">👤 ${esc(idea.character)}</div>`:''}
+      ${idea.twist?`<div style="font-size:11.5px;color:var(--text3);margin-top:2px">🌀 ${esc(idea.twist)}</div>`:''}
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
         <span style="font-size:11px;color:var(--text3)">${fmtTimeAgo(idea.createdAt)}</span>
         <div style="display:flex;gap:6px">
@@ -2507,8 +2519,25 @@ function useIdea(i){
   if(!idea)return;
   showScreen('wizard');resetWizard();
   setTimeout(()=>{
+    const titleEl=document.getElementById('w-title');
     const themeEl=document.getElementById('w-theme');
-    if(themeEl)themeEl.value=idea.text.slice(0,200);
+    if(titleEl&&idea.title)titleEl.value=idea.title;
+    if(themeEl){
+      let themeText=idea.theme||'';
+      if(idea.character)themeText+=(themeText?'\n':'')+'Hlavní postava: '+idea.character;
+      if(idea.twist)themeText+=(themeText?'\n':'')+'Zvrat: '+idea.twist;
+      themeEl.value=themeText.slice(0,300);
+    }
+    // prefill genre if recognized
+    if(idea.genre){
+      const genreMap={'fantasy':'fantasy','romance':'romance','romantika':'romance','thriller':'thriller','horor':'horror','horror':'horror','scifi':'scifi','sci-fi':'scifi','historický':'historical','komedie':'comedy','drama':'drama'};
+      const gKey=Object.keys(genreMap).find(k=>idea.genre.toLowerCase().includes(k));
+      if(gKey){
+        const gVal=genreMap[gKey];
+        if(!state.wGenres.includes(gVal))state.wGenres=[gVal];
+        renderGenreGrid&&renderGenreGrid();
+      }
+    }
     toast('Nápad načten do průvodce 💡','ok');
   },200);
 }
