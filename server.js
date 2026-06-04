@@ -612,6 +612,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, async () => {
   console.log(`StoryForge AI running on port ${PORT}`);
   await initBins();
+  await initCommunityBin();
   // Kontrola Brevo API key
   if (BREVO_KEY) {
     console.log("✅ Brevo API key nastaven — emaily budou fungovat");
@@ -619,4 +620,155 @@ app.listen(PORT, async () => {
     console.warn("⚠️  BREVO_KEY není nastaven — emaily nebudou chodit!");
     console.warn("   Přidej env proměnnou BREVO_KEY na Render.com");
   }
+});
+
+// ══════════════════════════════════════════════════════════
+// COMMUNITY
+// ══════════════════════════════════════════════════════════
+let BIN_COMMUNITY = null;
+
+async function initCommunityBin() {
+  BIN_COMMUNITY = process.env.BIN_COMMUNITY || null;
+  try {
+    if (BIN_COMMUNITY) {
+      await binGet(BIN_COMMUNITY);
+      console.log("✅ Community bin OK:", BIN_COMMUNITY);
+    } else {
+      BIN_COMMUNITY = await binCreate("storyforge-community", { posts: [] });
+      console.log("✅ Community bin vytvořen:", BIN_COMMUNITY);
+      console.log("👉 PŘIDEJ DO RENDER ENV: BIN_COMMUNITY=" + BIN_COMMUNITY);
+    }
+  } catch (e) {
+    console.error("❌ Community bin init FAILED:", e.message);
+  }
+}
+
+// GET all community posts (public feed)
+app.get("/api/community", async (req, res) => {
+  if (!BIN_COMMUNITY) return res.json({ posts: [] });
+  try {
+    const db = await binGet(BIN_COMMUNITY);
+    const posts = (db.posts || [])
+      .sort((a, b) => new Date(b.sharedAt) - new Date(a.sharedAt))
+      .slice(0, 50)
+      .map(p => ({ ...p, chapters: undefined })); // strip full text from feed
+    res.json({ posts });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET single post with full content
+app.get("/api/community/:id", async (req, res) => {
+  if (!BIN_COMMUNITY) return res.status(404).json({ error: "Komunita nedostupná" });
+  try {
+    const db = await binGet(BIN_COMMUNITY);
+    const post = (db.posts || []).find(p => p.id === req.params.id);
+    if (!post) return res.status(404).json({ error: "Příspěvek nenalezen" });
+    res.json(post);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// SHARE book to community
+app.post("/api/community", authMw, async (req, res) => {
+  const { bookId, message } = req.body;
+  if (!bookId) return res.status(400).json({ error: "Chybí bookId" });
+  try {
+    // Load book from books bin
+    const bdb = await binGet(BIN_BOOKS);
+    const book = bdb.books.find(b => String(b.id) === String(bookId) && b.userId === req.user.id);
+    if (!book) return res.status(404).json({ error: "Kniha nenalezena" });
+
+    const db = await binGet(BIN_COMMUNITY);
+    // Check if already shared
+    const existing = (db.posts || []).find(p => p.bookId === String(bookId) && p.userId === req.user.id);
+    if (existing) return res.status(400).json({ error: "Tato kniha je již sdílena" });
+
+    const post = {
+      id: crypto.randomUUID(),
+      bookId: String(book.id),
+      userId: req.user.id,
+      authorName: req.user.name,
+      title: book.title,
+      subtitle: book.subtitle || "",
+      annotation: book.annotation || "",
+      genre: book.genre || "",
+      wordCount: book.wordCount || 0,
+      chapterCount: (book.chapters || []).length,
+      chapters: book.chapters || [],
+      message: (message || "").slice(0, 300),
+      sharedAt: new Date().toISOString(),
+      likes: [],
+      comments: [],
+    };
+    if (!db.posts) db.posts = [];
+    db.posts.push(post);
+    await binSet(BIN_COMMUNITY, db);
+    res.json({ ok: true, postId: post.id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE / unshare post
+app.delete("/api/community/:id", authMw, async (req, res) => {
+  if (!BIN_COMMUNITY) return res.status(404).json({ error: "Komunita nedostupná" });
+  try {
+    const db = await binGet(BIN_COMMUNITY);
+    const idx = (db.posts || []).findIndex(p => p.id === req.params.id && p.userId === req.user.id);
+    if (idx === -1) return res.status(404).json({ error: "Nenalezeno nebo nemáš oprávnění" });
+    db.posts.splice(idx, 1);
+    await binSet(BIN_COMMUNITY, db);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// LIKE / unlike post
+app.post("/api/community/:id/like", authMw, async (req, res) => {
+  if (!BIN_COMMUNITY) return res.status(404).json({ error: "Komunita nedostupná" });
+  try {
+    const db = await binGet(BIN_COMMUNITY);
+    const post = (db.posts || []).find(p => p.id === req.params.id);
+    if (!post) return res.status(404).json({ error: "Příspěvek nenalezen" });
+    if (!post.likes) post.likes = [];
+    const idx = post.likes.indexOf(req.user.id);
+    if (idx === -1) post.likes.push(req.user.id);
+    else post.likes.splice(idx, 1);
+    await binSet(BIN_COMMUNITY, db);
+    res.json({ ok: true, likes: post.likes.length, liked: idx === -1 });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ADD comment
+app.post("/api/community/:id/comment", authMw, async (req, res) => {
+  const { text } = req.body;
+  if (!text || !text.trim()) return res.status(400).json({ error: "Prázdný komentář" });
+  if (!BIN_COMMUNITY) return res.status(404).json({ error: "Komunita nedostupná" });
+  try {
+    const db = await binGet(BIN_COMMUNITY);
+    const post = (db.posts || []).find(p => p.id === req.params.id);
+    if (!post) return res.status(404).json({ error: "Příspěvek nenalezen" });
+    if (!post.comments) post.comments = [];
+    const comment = {
+      id: crypto.randomUUID(),
+      userId: req.user.id,
+      authorName: req.user.name,
+      text: text.trim().slice(0, 500),
+      createdAt: new Date().toISOString(),
+    };
+    post.comments.push(comment);
+    await binSet(BIN_COMMUNITY, db);
+    res.json({ ok: true, comment });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE comment
+app.delete("/api/community/:postId/comment/:commentId", authMw, async (req, res) => {
+  if (!BIN_COMMUNITY) return res.status(404).json({ error: "Komunita nedostupná" });
+  try {
+    const db = await binGet(BIN_COMMUNITY);
+    const post = (db.posts || []).find(p => p.id === req.params.postId);
+    if (!post) return res.status(404).json({ error: "Příspěvek nenalezen" });
+    const cIdx = (post.comments || []).findIndex(c => c.id === req.params.commentId && c.userId === req.user.id);
+    if (cIdx === -1) return res.status(404).json({ error: "Komentář nenalezen" });
+    post.comments.splice(cIdx, 1);
+    await binSet(BIN_COMMUNITY, db);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
