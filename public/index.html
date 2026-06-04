@@ -1993,11 +1993,15 @@ async function submitShare() {
   const btn = document.getElementById('share-submit-btn');
   btn.disabled = true; btn.textContent = '⏳ Sdílím...';
   try {
-    await apiFetch('/api/community', { method:'POST', body: JSON.stringify({ bookId, message }) });
-    toast('Kniha sdílena s komunitou! 🎉', 'ok');
+    const data = await apiFetch('/api/community', { method:'POST', body: JSON.stringify({ bookId, message }) });
     closeShareModal();
     showScreen('community');
     await loadCommunityPosts();
+    if (data.alreadyShared) {
+      toast('Tato kniha je už sdílena — zobrazuji ji v komunitě 👀', 'ok');
+    } else {
+      toast('Kniha sdílena s komunitou! 🎉', 'ok');
+    }
   } catch(e) {
     toast('Chyba: ' + e.message, 'error');
   }
