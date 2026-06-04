@@ -148,7 +148,7 @@
           <input class="search-input" placeholder="Hledat email / jméno..." oninput="filterUsers(this.value)">
         </div>
         <table>
-          <thead><tr><th>Jméno</th><th>Email</th><th>Plán</th><th>Knihy</th><th>Registrace</th><th>Poslední aktivita</th><th>Akce</th></tr></thead>
+          <thead><tr><th>Jméno</th><th>Email</th><th>Plán</th><th>Knihy</th><th>Registrace</th><th>Poslední aktivita</th><th>Ověřen</th><th>Akce</th></tr></thead>
           <tbody id="users-tbody"></tbody>
         </table>
       </div>
@@ -290,14 +290,33 @@ function renderUsers(users){
       <td>${u.bookCount||0}</td>
       <td style="color:var(--text3);font-size:12px">${fmtDate(u.firstSeen)}</td>
       <td style="color:var(--text3);font-size:12px">${fmtDate(u.lastSeen)}</td>
-      <td>
+      <td>${u.isVerified
+        ? '<span class="badge" style="background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3)">✅ Ověřen</span>'
+        : '<span class="badge" style="background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.2)">❌ Neověřen</span>'
+      }</td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap">
         ${u.isPro
           ?`<button class="btn btn-danger btn-sm" onclick="revokePro('${esc(u.email)}')">Odebrat PRO</button>`
           :`<button class="btn btn-success btn-sm" onclick="quickSub('${esc(u.email)}')">+ PRO</button>`
         }
+        ${u.isVerified
+          ?`<button class="btn btn-sm" style="background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.2)" onclick="setVerified('${esc(u.email)}',false)">Zrušit ověření</button>`
+          :`<button class="btn btn-sm" style="background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3)" onclick="setVerified('${esc(u.email)}',true)">✅ Ověřit</button>`
+        }
       </td>
     </tr>`).join('');
 }
+async function setVerified(email, verified){
+  if(!confirm(verified ? `Ověřit uživatele ${email}?` : `Zrušit ověření uživatele ${email}?`)) return;
+  try{
+    const r=await fetch('/api/admin/verify',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':ADMIN_KEY},body:JSON.stringify({email,verified})});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error);
+    showToast(verified ? `✅ ${email} ověřen` : `❌ Ověření zrušeno pro ${email}`, 'ok');
+    loadData();
+  }catch(e){showToast('Chyba: '+e.message,'err');}
+}
+
 function filterUsers(q){
   const f=q.toLowerCase();
   renderUsers(allUsers.filter(u=>(u.name||'').toLowerCase().includes(f)||(u.email||'').toLowerCase().includes(f)));
