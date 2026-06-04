@@ -140,6 +140,7 @@ app.post("/api/auth/register", async (req, res) => {
       email: email.toLowerCase().trim(),
       password: hashPwd(password),
       is_pro: false,
+      is_verified: false,
       pro_expires: null,
       created_at: new Date().toISOString(),
       last_seen: new Date().toISOString(),
@@ -169,8 +170,8 @@ app.post("/api/auth/login", async (req, res) => {
       last_seen: new Date().toISOString(),
       is_pro: isPro,
     });
-    const token = jwtSign({ id: user.id, email: user.email, name: user.name, isPro });
-    res.json({ token, user: { id: user.id, name: user.name, email: user.email, isPro, proExpires: user.pro_expires } });
+    const token = jwtSign({ id: user.id, email: user.email, name: user.name, isPro, isVerified: user.is_verified || false });
+    res.json({ token, user: { id: user.id, name: user.name, email: user.email, isPro, isVerified: user.is_verified || false, proExpires: user.pro_expires } });
   } catch (e) {
     res.status(500).json({ error: "Chyba serveru: " + e.message });
   }
@@ -183,7 +184,7 @@ app.get("/api/auth/me", authMw, async (req, res) => {
     const user = rows[0];
     if (!user) return res.status(404).json({ error: "Uživatel nenalezen" });
     const isPro = user.is_pro && (!user.pro_expires || new Date(user.pro_expires) > new Date());
-    res.json({ id: user.id, name: user.name, email: user.email, isPro, proExpires: user.pro_expires, bookCount: user.book_count });
+    res.json({ id: user.id, name: user.name, email: user.email, isPro, isVerified: user.is_verified || false, proExpires: user.pro_expires, bookCount: user.book_count });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -311,7 +312,8 @@ app.get("/api/admin/users", adminMw, async (req, res) => {
     const users = await supa.select("users", "?order=last_seen.desc");
     res.json(users.map(u => ({
       id: u.id, name: u.name, email: u.email,
-      isPro: u.is_pro, proExpires: u.pro_expires,
+      isPro: u.is_pro, isVerified: u.is_verified || false,
+      proExpires: u.pro_expires,
       createdAt: u.created_at, lastSeen: u.last_seen,
       bookCount: u.book_count,
     })));
@@ -514,6 +516,18 @@ app.get("/api/test", async (req, res) => {
   } catch (e) { res.json({ status: "ERROR", reason: e.message }); }
 });
 
+// VERIFY user
+app.post("/api/admin/verify", adminMw, async (req, res) => {
+  const { email, verified } = req.body;
+  if (!email) return res.status(400).json({ error: "email required" });
+  try {
+    const rows = await supa.select("users", `?email=eq.${encodeURIComponent(email.toLowerCase())}`);
+    if (!rows.length) return res.status(404).json({ error: "Uživatel nenalezen" });
+    await supa.update("users", `?id=eq.${rows[0].id}`, { is_verified: verified !== false });
+    res.json({ ok: true, isVerified: verified !== false });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ══════════════════════════════════════════════════════════
 // COMMUNITY
 // ══════════════════════════════════════════════════════════
@@ -541,6 +555,11 @@ app.post("/api/community", authMw, async (req, res) => {
   const { bookId, message } = req.body;
   if (!bookId) return res.status(400).json({ error: "Chybí bookId" });
   try {
+    // Check if user is verified
+    const userRows = await supa.select("users", `?id=eq.${req.user.id}&select=is_verified`);
+    if (!userRows[0]?.is_verified) {
+      return res.status(403).json({ error: "UNVERIFIED", message: "Sdílení je dostupné pouze pro ověřené uživatele. Požádej admina o ověření." });
+    }
     // Check if already shared → vrátíme existující post
     const existing = await supa.select("community_posts",
       `?book_id=eq.${bookId}&user_id=eq.${req.user.id}&select=id`);
