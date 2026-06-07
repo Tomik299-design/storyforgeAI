@@ -517,24 +517,46 @@ app.get("/api/test", async (req, res) => {
   } catch (e) { res.json({ status: "ERROR", reason: e.message }); }
 });
 
-// ── GROQ (rychlý překlad) ─────────────────────────────────
+// ── GROQ (rychlý překlad) s fallbackem na Mistral ────────
 app.post("/api/groq", async (req, res) => {
-  const apiKey = GROQ_KEY;
-  if (!apiKey) return res.status(500).json({ error: "Missing GROQ_API_KEY" });
+  const { system, prompt, max_tokens } = req.body;
+  const messages = [];
+  if (system) messages.push({ role: "system", content: system });
+  messages.push({ role: "user", content: prompt });
+
+  // Zkusit Groq
+  if (GROQ_KEY) {
+    try {
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + GROQ_KEY },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages,
+          max_tokens: max_tokens || 4000,
+          temperature: 0.3,
+        }),
+      });
+      const data = await response.json();
+      // Rate limit (429) nebo jiná chyba → fallback
+      if (response.status === 429 || data.error) {
+        console.warn("Groq rate limit / error, fallback na Mistral:", data.error?.message);
+      } else {
+        return res.json({ content: [{ type: "text", text: data.choices?.[0]?.message?.content || "" }] });
+      }
+    } catch (err) {
+      console.warn("Groq fetch error, fallback:", err.message);
+    }
+  }
+
+  // Fallback na Mistral
+  const mistralKey = process.env.MISTRAL_API_KEY;
+  if (!mistralKey) return res.status(500).json({ error: "Groq rate limit a chybí MISTRAL_API_KEY" });
   try {
-    const { system, prompt, max_tokens } = req.body;
-    const messages = [];
-    if (system) messages.push({ role: "system", content: system });
-    messages.push({ role: "user", content: prompt });
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + apiKey },
-      body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
-        messages,
-        max_tokens: max_tokens || 4000,
-        temperature: 0.3,
-      }),
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + mistralKey },
+      body: JSON.stringify({ model: "mistral-small-latest", messages, max_tokens: max_tokens || 4000, temperature: 0.3 }),
     });
     const data = await response.json();
     if (data.error) return res.status(500).json({ error: data.error.message });
