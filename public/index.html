@@ -1355,7 +1355,7 @@ async function startGeneration(){
 // BOOK VIEW
 // ══════════════════════════════════════════════════════════
 function openBook(id){
-  const book=state.books.find(b=>b.id===id);
+  const book=state.books.find(b=>String(b.id)===String(id));
   if(!book)return;
   state.currentBook=book;state.chatHistory=[];
   document.getElementById('book-header-title').textContent=book.title;
@@ -2345,14 +2345,14 @@ function bookCardHTML(book){
   const favIcon=book.isFavorite?'❤️':'🤍';
   const cardCoverPrompt=encodeURIComponent((book.title||'')+' '+(Array.isArray(book.genre)?book.genre.join(','):book.genre||'')+' book cover art, '+(book.theme||'')+', dramatic lighting, detailed digital painting, cinematic&nologo=true&width=300&height=200');
   const cardCoverImg=`<div class="book-cover-skeleton"></div><img src="https://image.pollinations.ai/prompt/${cardCoverPrompt}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;opacity:0;transition:opacity .4s" loading="lazy" onload="this.style.opacity=.9" onerror="this.style.display='none'" />`;
-  return '<div class="book-card" onclick="openBook('+book.id+')">'+
+  return '<div class="book-card" onclick="openBook(\''+book.id+'\')">'+
     '<div class="book-cover" style="background:linear-gradient(160deg,'+c1+','+c2+')">'+
     cardCoverImg+
     '<div class="book-cover-overlay"></div><div class="book-cover-gradient"></div>'+
     '<span class="book-cover-emoji" style="text-shadow:0 2px 8px rgba(0,0,0,.6)">'+gl.i+'</span>'+
     '<span class="book-genre-badge">'+gl.l+'</span>'+
-    '<button class="book-del-btn" onclick="event.stopPropagation();deleteBook('+book.id+')" style="right:36px">🗑</button>'+
-    '<button class="book-del-btn" onclick="event.stopPropagation();toggleFavorite('+book.id+')" style="right:4px">'+favIcon+'</button>'+
+    '<button class="book-del-btn" onclick="event.stopPropagation();deleteBook(\''+book.id+'\'" style="right:36px">🗑</button>'+
+    '<button class="book-del-btn" onclick="event.stopPropagation();toggleFavorite(\''+book.id+'\'" style="right:4px">'+favIcon+'</button>'+
     '</div><div class="book-body">'+
     '<div class="book-title">'+esc(book.title)+'</div>'+
     '<div class="book-meta">'+book.chapters.length+' kapitol · '+(book.wordCount||0).toLocaleString()+' slov</div>'+
@@ -2363,8 +2363,8 @@ function bookCardHTML(book){
 
 function deleteBook(id){
   if(!confirm('Smazat tuto knihu?'))return;
-  state.books=state.books.filter(b=>b.id!==id);
-  if(state.currentBook&&state.currentBook.id===id)state.currentBook=null;
+  state.books=state.books.filter(b=>String(b.id)!==String(id));
+  if(state.currentBook&&String(state.currentBook.id)===String(id))state.currentBook=null;
   renderDashboard();renderLibrary();updateNavRecent();
   toast('Kniha smazána');
   if(!state.demoMode && authToken){
@@ -2373,7 +2373,7 @@ function deleteBook(id){
 }
 
 function toggleFavorite(id){
-  const book=state.books.find(b=>b.id===id);
+  const book=state.books.find(b=>String(b.id)===String(id));
   if(!book)return;
   book.isFavorite=!book.isFavorite;
   renderDashboard();renderLibrary();updateNavRecent();
@@ -2399,7 +2399,7 @@ function renderNavRecent(){
   const el=document.getElementById('nav-recent');
   el.innerHTML=state.books.slice(-3).reverse().map(b=>{
     const gl=genreLabel(b.genre);
-    return '<div class="nav-item" onclick="openBook('+b.id+')" style="padding-left:8px">'+
+    return '<div class="nav-item" onclick="openBook(\''+b.id+'\')" style="padding-left:8px">'+
       '<div class="nav-book-thumb">'+gl.i+'</div>'+
       '<div><div class="nav-book-title">'+esc(b.title)+'</div><div class="nav-book-genre">'+gl.l+'</div></div>'+
       '</div>';
