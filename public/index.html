@@ -2287,6 +2287,30 @@ async function startOwnTranslation() {
   const translated = new Array(chunks.length);
   const startTime = Date.now();
   let doneCount = 0;
+  let lastDoneCount = 0;
+  let lastTickTime = Date.now();
+  let estRemaining = null;
+
+  // Interval aktualizuje čas a rychlost každou sekundu nezávisle
+  const timerInterval = setInterval(() => {
+    const elapsed = (Date.now() - startTime) / 1000;
+    const tickNow = Date.now();
+    const tickElapsed = (tickNow - lastTickTime) / 1000;
+    const newDone = doneCount - lastDoneCount;
+    lastDoneCount = doneCount;
+    lastTickTime = tickNow;
+
+    if (doneCount > 0) {
+      const rate = doneCount / elapsed;
+      const remaining = (chunks.length - doneCount) / rate;
+      estRemaining = remaining;
+      const charsPerSec = Math.round((newDone * CHUNK) / Math.max(tickElapsed, 0.1));
+      if(etaEl) etaEl.textContent = 'Zbývá: ' + formatEta(remaining);
+      if(speedEl) speedEl.textContent = (charsPerSec > 0 ? charsPerSec : Math.round(rate * CHUNK)) + ' znaků/s';
+    } else {
+      if(etaEl) etaEl.textContent = 'Počítám...';
+    }
+  }, 1000);
 
   try {
     // Zpracuj po dávkách PARALLEL chunků najednou
@@ -2297,14 +2321,9 @@ async function startOwnTranslation() {
           translated[i + bi] = result;
           doneCount++;
           const p = Math.round((doneCount / chunks.length) * 100);
-          const elapsed = (Date.now() - startTime) / 1000;
-          const rate = doneCount / elapsed; // chunks per second
-          const remaining = (chunks.length - doneCount) / rate;
           status.textContent = `Překládám část ${doneCount} z ${chunks.length}...`;
           pct.textContent = p + '%';
           bar.style.width = p + '%';
-          if(etaEl && doneCount > 1) etaEl.textContent = 'Zbývá: ' + formatEta(remaining);
-          if(speedEl) speedEl.textContent = Math.round(rate * CHUNK) + ' znaků/s';
         })
       );
       await Promise.all(batchPromises);
@@ -2359,6 +2378,7 @@ async function startOwnTranslation() {
     document.body.appendChild(a); a.click();
     document.body.removeChild(a); URL.revokeObjectURL(url);
 
+    clearInterval(timerInterval);
     status.textContent = '✅ Překlad dokončen!';
     pct.textContent = '100%';
     bar.style.width = '100%';
@@ -2368,6 +2388,7 @@ async function startOwnTranslation() {
     initTranslateOwnScreen();
 
   } catch(e) {
+    clearInterval(timerInterval);
     errEl.style.display = 'block';
     errEl.textContent = 'Chyba překladu: ' + e.message;
   }
