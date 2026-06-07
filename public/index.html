@@ -568,8 +568,12 @@ select.input{cursor:pointer;}
             <span style="font-size:12px;color:var(--text2)" id="own-trans-status">Překládám...</span>
             <span style="font-size:12px;color:var(--text2)" id="own-trans-pct">0%</span>
           </div>
-          <div style="background:var(--surface2);border-radius:99px;height:7px;overflow:hidden">
+          <div style="background:var(--surface2);border-radius:99px;height:7px;overflow:hidden;margin-bottom:6px">
             <div id="own-trans-bar" style="height:100%;background:linear-gradient(90deg,var(--purple),var(--purple2));border-radius:99px;width:0%;transition:width .4s"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between">
+            <span style="font-size:11px;color:var(--text3)" id="own-trans-speed"></span>
+            <span style="font-size:11px;color:var(--text3)" id="own-trans-eta"></span>
           </div>
         </div>
 
@@ -1491,7 +1495,7 @@ async function startTranslation(){
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        system:'Jsi profesionální překladatel. Přelož přesně do '+lang+'. Odpověz pouze JSON bez markdown.',
+        system:'Jsi zkušený literární překladatel. Přelož přesně do '+lang+'. Respektuj gramatický rod postav a přirozený literární styl. Odpověz pouze JSON bez markdown, bez vysvětlení.',
         prompt:'Přelož do '+lang+' tyto texty a vrať JSON: {"title":"...","subtitle":"...","annotation":"..."}\n\nTitle: '+book.title+'\nSubtitle: '+(book.subtitle||'')+'\nAnnotation: '+(book.annotation||''),
         max_tokens:500
       })
@@ -1517,7 +1521,7 @@ async function startTranslation(){
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
-          system:'Jsi profesionální literární překladatel. Přelož text do '+lang+'. Zachovej styl, atmosféru a strukturu. Přelož i název kapitoly. Odpověz pouze JSON bez markdown.',
+          system:'Jsi zkušený literární překladatel s dokonalou znalostí '+lang+'. PRAVIDLA: 1) Respektuj gramatický rod postav (žena→ženský rod, muž→mužský rod). 2) Přídavná jména, slovesa a zájmena musí souhlasit v rodě a pádu. 3) Idiomy přelož přirozeným ekvivalentem. 4) Zachovej styl, atmosféru a strukturu. Přelož i název kapitoly. Odpověz pouze JSON bez markdown.',
           prompt:'Přelož do '+lang+' a vrať JSON: {"title":"...","content":"..."}\n\nNázev: '+ch.title+'\n\nText:\n'+ch.content,
           max_tokens:4000
         })
@@ -2176,6 +2180,63 @@ function clearOwnFile() {
   document.getElementById('own-trans-error').style.display = 'none';
 }
 
+// Mapa jazyků: value → { name, nativeName, articles }
+const LANG_META = {
+  'češtinu':      { name:'češtinu', label:'Čeština', code:'cs' },
+  'slovenštinu':  { name:'slovenštinu', label:'Slovenština', code:'sk' },
+  'angličtinu':   { name:'angličtinu', label:'English', code:'en' },
+  'němčinu':      { name:'němčinu', label:'Deutsch', code:'de' },
+  'francouzštinu':{ name:'francouzštinu', label:'Français', code:'fr' },
+  'španělštinu':  { name:'španělštinu', label:'Español', code:'es' },
+  'italštinu':    { name:'italštinu', label:'Italiano', code:'it' },
+  'polštinu':     { name:'polštinu', label:'Polski', code:'pl' },
+};
+
+function buildTranslationSystemPrompt(lang) {
+  return `Jsi zkušený literární překladatel s dokonalou znalostí češtiny i ${lang}.
+
+ZÁVAZNÁ PRAVIDLA PŘEKLADU:
+1. Přelož text přesně do ${lang} — přirozený, plynný, literární styl.
+2. GRAMATICKÝ ROD: Respektuj rod hlavních postav — pokud je postava žena, používej ženský rod (přišla, udělala, byla), pokud muž, mužský rod (přišel, udělal, byl). Nikdy nezaměňuj rody.
+3. SHODA: Přídavná jména, slovesa a zájmena musí souhlasit v rodě, čísle a pádu s podstatnými jmény.
+4. PŘIROZENÝ JAZYK: Nepoužívej doslovné překlady. Idiomy a fráze přelož ekvivalentem v cílovém jazyce.
+5. Zachovej strukturu odstavců, dialogové uvozovky a formátování původního textu.
+6. Vrať POUZE přeložený text bez komentářů, vysvětlení nebo uvozovek.`;
+}
+
+async function translateChunk(chunk, lang, retries = 2) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const resp = await fetch('/api/claude', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system: buildTranslationSystemPrompt(lang),
+          prompt: chunk,
+          max_tokens: 4000
+        })
+      });
+      if (!resp.ok) {
+        const t = await resp.text().catch(()=>'');
+        if (attempt < retries) { await new Promise(r=>setTimeout(r,2000)); continue; }
+        throw new Error('Server chyba ' + resp.status + (t.includes('<') ? ' (zkus to znovu)' : ': ' + t.slice(0,100)));
+      }
+      const data = await resp.json();
+      if (data.error) throw new Error(data.error);
+      return data.content?.[0]?.text || chunk;
+    } catch(e) {
+      if (attempt < retries) { await new Promise(r=>setTimeout(r,2000)); continue; }
+      throw e;
+    }
+  }
+}
+
+function formatEta(seconds) {
+  if (seconds < 60) return `~${Math.round(seconds)}s`;
+  const m = Math.floor(seconds/60), s = Math.round(seconds%60);
+  return `~${m}m ${s}s`;
+}
+
 async function startOwnTranslation() {
   if (!ownTransText.trim()) { toast('Nejprve nahraj soubor', 'error'); return; }
 
@@ -2186,6 +2247,8 @@ async function startOwnTranslation() {
   const pct = document.getElementById('own-trans-pct');
   const bar = document.getElementById('own-trans-bar');
   const errEl = document.getElementById('own-trans-error');
+  const etaEl = document.getElementById('own-trans-eta');
+  const speedEl = document.getElementById('own-trans-speed');
 
   // Check free limit
   if (!state.user?.isPro) {
@@ -2201,39 +2264,50 @@ async function startOwnTranslation() {
   startBtn.disabled = true;
   progress.style.display = 'block';
   errEl.style.display = 'none';
+  if(etaEl) etaEl.textContent = '';
+  if(speedEl) speedEl.textContent = '';
 
-  // Rozdělení na chunky ~2000 znaků
-  const CHUNK = 2000;
+  // Rozdělení na chunky ~3000 znaků (větší = méně volání = rychleji)
+  const CHUNK = 3000;
+  const PARALLEL = 3; // paralelní překlad
   const chunks = [];
-  for (let i = 0; i < ownTransText.length; i += CHUNK) {
-    chunks.push(ownTransText.slice(i, i + CHUNK));
+  // Rozděl na odstavcové hranice aby text nebyl rozříznut uprostřed věty
+  const paragraphs = ownTransText.split(/\n\n+/);
+  let current = '';
+  for (const p of paragraphs) {
+    if (current.length + p.length > CHUNK && current.length > 0) {
+      chunks.push(current.trim());
+      current = p;
+    } else {
+      current += (current ? '\n\n' : '') + p;
+    }
   }
+  if (current.trim()) chunks.push(current.trim());
 
-  const translated = [];
+  const translated = new Array(chunks.length);
+  const startTime = Date.now();
+  let doneCount = 0;
+
   try {
-    for (let i = 0; i < chunks.length; i++) {
-      const p = Math.round(((i+1)/chunks.length)*100);
-      status.textContent = `Překládám část ${i+1} z ${chunks.length}...`;
-      pct.textContent = p + '%';
-      bar.style.width = p + '%';
-
-      const resp = await fetch('/api/claude', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system: 'Jsi profesionální literární překladatel. Přelož přesně do ' + lang + '. Zachovej formátování, odstavce a styl. Vrať POUZE přeložený text bez komentářů.',
-          prompt: chunks[i],
-          max_tokens: 4000
+    // Zpracuj po dávkách PARALLEL chunků najednou
+    for (let i = 0; i < chunks.length; i += PARALLEL) {
+      const batch = chunks.slice(i, i + PARALLEL);
+      const batchPromises = batch.map((chunk, bi) =>
+        translateChunk(chunk, lang).then(result => {
+          translated[i + bi] = result;
+          doneCount++;
+          const p = Math.round((doneCount / chunks.length) * 100);
+          const elapsed = (Date.now() - startTime) / 1000;
+          const rate = doneCount / elapsed; // chunks per second
+          const remaining = (chunks.length - doneCount) / rate;
+          status.textContent = `Překládám část ${doneCount} z ${chunks.length}...`;
+          pct.textContent = p + '%';
+          bar.style.width = p + '%';
+          if(etaEl && doneCount > 1) etaEl.textContent = 'Zbývá: ' + formatEta(remaining);
+          if(speedEl) speedEl.textContent = Math.round(rate * CHUNK) + ' znaků/s';
         })
-      });
-      if (!resp.ok) {
-        const errText = await resp.text().catch(()=>'');
-        throw new Error('Server chyba ' + resp.status + (errText.includes('<') ? ' (zkus to znovu)' : ': ' + errText.slice(0,120)));
-      }
-      const data = await resp.json();
-      if (data.error) throw new Error(data.error);
-      const text = data.content?.[0]?.text || chunks[i];
-      translated.push(text);
+      );
+      await Promise.all(batchPromises);
     }
 
     // Increment translation count
@@ -2241,22 +2315,56 @@ async function startOwnTranslation() {
       try { await apiFetch('/api/auth/update-translations', { method:'POST', body:'{}' }); } catch(e) {}
     }
 
-    // Download result
-    const result = translated.join('\n');
+    const result = translated.join('\n\n');
     const baseName = ownTransFile ? ownTransFile.name.replace(/\.[^.]+$/, '') : 'preklad';
+    const langLabel = LANG_META[lang]?.label || lang;
+    const bookTitle = baseName + ' — ' + langLabel;
+
+    // ── Uložit do knihovny jako knihu ──
+    if (authToken && state.user) {
+      try {
+        const fakeBook = {
+          id: Date.now(),
+          title: bookTitle,
+          genre: ['other'],
+          style: 'přeložená kniha',
+          theme: 'Přeloženo z ' + baseName,
+          setting: '',
+          characters: [],
+          bible: '',
+          subtitle: 'Přeloženo do: ' + langLabel,
+          annotation: 'Tato kniha byla přeložena pomocí StoryForge AI z externího souboru.',
+          createdAt: new Date().toISOString(),
+          wordCount: result.split(/\s+/).length,
+          chapters: [{ number: 1, title: bookTitle, content: result }],
+          isTranslated: true,
+          translatedFrom: baseName,
+          translatedTo: langLabel,
+        };
+        const saved = await apiFetch('/api/books', { method:'POST', body: JSON.stringify({ book: fakeBook }) });
+        if (saved?.book?.id) fakeBook.id = saved.book.id;
+        state.books.push(fakeBook);
+        renderBookGrid();
+        toast('✅ Překlad uložen do knihovny!', 'ok');
+      } catch(e) {
+        console.warn('Uložení do knihovny selhalo:', e.message);
+      }
+    }
+
+    // Download TXT
     const blob = new Blob([result], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = baseName + '_' + lang + '.txt';
+    a.href = url; a.download = baseName + '_' + langLabel + '.txt';
     document.body.appendChild(a); a.click();
     document.body.removeChild(a); URL.revokeObjectURL(url);
 
     status.textContent = '✅ Překlad dokončen!';
     pct.textContent = '100%';
     bar.style.width = '100%';
-    toast('Překlad dokončen a stažen! 🌍', 'ok');
+    if(etaEl) etaEl.textContent = 'Hotovo za ' + formatEta((Date.now()-startTime)/1000);
+    if(speedEl) speedEl.textContent = '';
 
-    // Refresh limit info
     initTranslateOwnScreen();
 
   } catch(e) {
@@ -2351,8 +2459,8 @@ function bookCardHTML(book){
     '<div class="book-cover-overlay"></div><div class="book-cover-gradient"></div>'+
     '<span class="book-cover-emoji" style="text-shadow:0 2px 8px rgba(0,0,0,.6)">'+gl.i+'</span>'+
     '<span class="book-genre-badge">'+gl.l+'</span>'+
-    '<button class="book-del-btn" onclick="event.stopPropagation();deleteBook(\''+book.id+'\'" style="right:36px">🗑</button>'+
-    '<button class="book-del-btn" onclick="event.stopPropagation();toggleFavorite(\''+book.id+'\'" style="right:4px">'+favIcon+'</button>'+
+    '<button class="book-del-btn" onclick="event.stopPropagation();deleteBook(\''+book.id+'\')" style="right:36px">🗑</button>'+
+    '<button class="book-del-btn" onclick="event.stopPropagation();toggleFavorite(\''+book.id+'\')" style="right:4px">'+favIcon+'</button>'+
     '</div><div class="book-body">'+
     '<div class="book-title">'+esc(book.title)+'</div>'+
     '<div class="book-meta">'+book.chapters.length+' kapitol · '+(book.wordCount||0).toLocaleString()+' slov</div>'+
