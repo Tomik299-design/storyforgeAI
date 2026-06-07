@@ -313,7 +313,7 @@ async function setVerified(email, verified){
     const d=await r.json();
     if(!r.ok) throw new Error(d.error);
     toast(verified ? `✅ ${email} ověřen` : `❌ Ověření zrušeno pro ${email}`, 'ok');
-    loadData();
+    loadAll();
   }catch(e){toast('Chyba: '+e.message,'err');}
 }
 

@@ -1724,6 +1724,13 @@ let currentReaderPost = null;
 async function initCommunityScreen() {
   const shareBtn = document.getElementById('share-my-book-btn');
   const banner = document.getElementById('community-unverified-banner');
+  // Vždy znovu fetchnout aktuální stav ověření — admin mohl ověřit uživatele mezitím
+  if (authToken) {
+    try {
+      const freshUser = await apiFetch('/api/auth/me');
+      state.user = { ...state.user, ...freshUser };
+    } catch(e) {}
+  }
   const isVerified = state.user?.isVerified;
   if (shareBtn) shareBtn.style.display = (authToken && isVerified) ? 'flex' : 'none';
   if (banner) banner.style.display = (authToken && !isVerified) ? 'block' : 'none';
@@ -1996,8 +2003,10 @@ async function deleteComment(postId, commentId) {
 }
 
 // ── SHARE MODAL ───────────────────────────────────────────
-function openShareModal(preselectedBookId) {
+async function openShareModal(preselectedBookId) {
   if (!authToken) { toast('Pro sdílení se přihlas', 'error'); return; }
+  // Fresh fetch ověření
+  try { const u = await apiFetch('/api/auth/me'); state.user = { ...state.user, ...u }; } catch(e) {}
   if (!state.user?.isVerified) { toast('🔒 Sdílení je dostupné pouze pro ověřené uživatele. Kontaktuj admina.', 'error'); return; }
   const modal = document.getElementById('share-modal');
   const sel = document.getElementById('share-book-select');
@@ -2052,8 +2061,10 @@ async function submitShare() {
   btn.disabled = false; btn.textContent = '📤 Sdílet';
 }
 
-function shareCurrentBook() {
+async function shareCurrentBook() {
   if (!state.currentBook) return;
+  // Fresh fetch ověření
+  try { const u = await apiFetch('/api/auth/me'); state.user = { ...state.user, ...u }; } catch(e) {}
   if (!state.user?.isVerified) {
     toast('🔒 Sdílení je dostupné pouze pro ověřené uživatele. Kontaktuj admina.', 'error');
     return;
