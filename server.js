@@ -16,6 +16,7 @@ const BREVO_KEY   = process.env.BREVO_KEY    || "";
 const FROM_EMAIL  = process.env.FROM_EMAIL   || "StoryForge AI <storyforgeai26@gmail.com>";
 const APP_URL     = process.env.APP_URL      || "https://storyforgeai.onrender.com";
 
+const GROQ_KEY    = process.env.GROQ_API_KEY  || "";
 const SUPA_URL    = process.env.SUPABASE_URL || "https://ucmbvqoltivmyaingthl.supabase.co";
 const SUPA_KEY    = process.env.SUPABASE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVjbWJ2cW9sdGl2bXlhaW5ndGhsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDU0MzUwMSwiZXhwIjoyMDk2MTE5NTAxfQ._3rwZ5lf97cOAGU4odEngUNrhcg6PClgEP8vBHhv9dw";
 
@@ -514,6 +515,31 @@ app.get("/api/test", async (req, res) => {
     if (d.error) return res.json({ status: "ERROR", reason: d.error.message });
     res.json({ status: "OK", response: d.choices?.[0]?.message?.content });
   } catch (e) { res.json({ status: "ERROR", reason: e.message }); }
+});
+
+// ── GROQ (rychlý překlad) ─────────────────────────────────
+app.post("/api/groq", async (req, res) => {
+  const apiKey = GROQ_KEY;
+  if (!apiKey) return res.status(500).json({ error: "Missing GROQ_API_KEY" });
+  try {
+    const { system, prompt, max_tokens } = req.body;
+    const messages = [];
+    if (system) messages.push({ role: "system", content: system });
+    messages.push({ role: "user", content: prompt });
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + apiKey },
+      body: JSON.stringify({
+        model: "llama-3.1-8b-instant",
+        messages,
+        max_tokens: max_tokens || 4000,
+        temperature: 0.3,
+      }),
+    });
+    const data = await response.json();
+    if (data.error) return res.status(500).json({ error: data.error.message });
+    res.json({ content: [{ type: "text", text: data.choices?.[0]?.message?.content || "" }] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // VERIFY user
