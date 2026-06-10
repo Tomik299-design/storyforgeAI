@@ -267,6 +267,89 @@ select.input{cursor:pointer;}
 .toast.ok{background:rgba(16,185,129,.18);border:1px solid rgba(16,185,129,.38);color:var(--text);}
 .toast.err{background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.38);color:var(--text);}
 .toast.info{background:var(--surface2);border:1px solid var(--border2);color:var(--text);}
+/* ══════════════════════════════════════════════════
+   MOBILNÍ LAYOUT (max-width: 768px)
+══════════════════════════════════════════════════ */
+
+/* Hamburger tlačítko */
+.mob-menu-btn{display:none;background:none;border:none;color:var(--text);cursor:pointer;padding:6px;border-radius:8px;transition:background .15s;}
+.mob-menu-btn:hover{background:var(--surface2);}
+.mob-menu-btn svg{width:22px;height:22px;}
+
+/* Overlay za sidebar */
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:89;backdrop-filter:blur(2px);}
+.sidebar-overlay.show{display:block;}
+
+/* Přepínač jazyka */
+.lang-switch{display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:3px;}
+.lang-btn{padding:4px 9px;border-radius:6px;font-size:11.5px;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--text2);transition:all .15s;}
+.lang-btn.active{background:var(--purple2);color:#fff;}
+
+@media(max-width:768px){
+  body{overflow:auto;}
+
+  /* Skrýt auth-left na mobilu */
+  .auth-left{display:none;}
+  #page-auth{flex-direction:column;}
+  .auth-right{width:100%;min-height:100vh;padding:36px 24px;border-left:none;}
+  .auth-form-box{max-width:100%;}
+  .auth-hero-title{font-size:28px;}
+
+  /* App layout — sidebar jako drawer */
+  #page-app{flex-direction:column;position:relative;}
+  .sidebar{
+    position:fixed;top:0;left:-240px;height:100vh;width:240px;
+    z-index:90;transition:left .28s cubic-bezier(.4,0,.2,1);
+    box-shadow:4px 0 32px rgba(0,0,0,.5);
+  }
+  .sidebar.open{left:0;}
+  .sidebar-overlay.show{display:block;}
+
+  /* Topbar — přidat hamburger */
+  .topbar{padding:13px 16px;}
+  .mob-menu-btn{display:flex;}
+  .topbar h2{font-size:16px;}
+  .topbar p{font-size:11px;}
+
+  /* Content padding */
+  .content{padding:16px;}
+
+  /* Gridy — 1 sloupec */
+  .action-grid{grid-template-columns:1fr 1fr;gap:10px;}
+  .dash-grid{grid-template-columns:1fr;}
+  .books-grid{grid-template-columns:repeat(2,1fr);gap:10px;}
+  .lib-grid{grid-template-columns:repeat(2,1fr);gap:10px;}
+  .genre-grid{grid-template-columns:repeat(2,1fr);}
+  .style-grid{grid-template-columns:1fr;}
+  .plan-row{grid-template-columns:1fr;}
+
+  /* Book hero */
+  .book-hero{flex-direction:column;gap:14px;padding:18px;}
+  .book-hero-cover{width:100%;height:120px;}
+  .book-view-wrap{padding:0 0 60px;}
+
+  /* Wizard */
+  .wizard-wrap{padding:4px 0 60px;}
+
+  /* Chat */
+  .chat-outer{height:calc(100vh - 140px);}
+
+  /* Toast pozice */
+  .toast{top:auto;bottom:20px;right:16px;left:16px;max-width:none;}
+
+  /* Skrýt floating books na auth */
+  .book-float{display:none;}
+
+  /* Topbar lang switch */
+  .topbar-right{display:flex;align-items:center;gap:8px;}
+}
+
+@media(max-width:400px){
+  .action-grid{grid-template-columns:1fr;}
+  .books-grid{grid-template-columns:1fr;}
+  .lib-grid{grid-template-columns:1fr;}
+}
+
 </style>
 </head>
 <body>
@@ -288,8 +371,8 @@ select.input{cursor:pointer;}
       <div class="logo-icon">📚</div>
       <div class="logo-text">StoryForge <span>AI</span></div>
     </div>
-    <h1 class="auth-hero-title">Každý má <em style="color:var(--purple3)">příběh</em>,<br/>který stojí za vyprávění.</h1>
-    <p class="auth-hero-sub">AI platforma, která promění tvůj nápad v kompletní román. Žádné psaní — stačí představivost.</p>
+    <h1 class="auth-hero-title" data-i18n="hero_title" data-i18n-html="1">Každý má <em style="color:var(--purple3)">příběh</em>,<br/>který stojí za vyprávění.</h1>
+    <p class="auth-hero-sub" data-i18n="hero_sub">AI platforma, která promění tvůj nápad v kompletní román. Žádné psaní — stačí představivost.</p>
     <div class="auth-features">
       <div class="auth-feat"><div class="auth-feat-icon" style="background:rgba(124,58,237,.2)">✍️</div>Kompletní knihy generované AI v minutách</div>
       <div class="auth-feat"><div class="auth-feat-icon" style="background:rgba(13,148,136,.2)">🎭</div>Konzistentní postavy a světy přes celý román</div>
@@ -299,13 +382,19 @@ select.input{cursor:pointer;}
   </div>
 
   <div class="auth-right">
-    <div class="auth-form-box">
-      <h2 class="auth-form-title" id="auth-title">Vítej zpět 👋</h2>
-      <p class="auth-form-sub" id="auth-sub">Přihlas se a pokračuj ve svém příběhu</p>
+    <div style="position:absolute;top:18px;right:18px;">
+        <div class="lang-switch">
+          <button class="lang-btn" id="lang-cs-btn-auth" onclick="setLang('cs')">CS</button>
+          <button class="lang-btn" id="lang-en-btn-auth" onclick="setLang('en')">EN</button>
+        </div>
+      </div>
+      <div class="auth-form-box">
+      <h2 class="auth-form-title" id="auth-title" data-i18n="auth_title">Vítej zpět 👋</h2>
+      <p class="auth-form-sub" id="auth-sub" data-i18n="auth_sub">Přihlas se a pokračuj ve svém příběhu</p>
 
       <button class="auth-social" onclick="toast('Google přihlášení bude brzy dostupné 🚀','info')">
         <svg width="17" height="17" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-        Pokračovat s Google
+        <span data-i18n="auth_google">Pokračovat s Google</span>
       </button>
 
 
@@ -328,14 +417,14 @@ select.input{cursor:pointer;}
             <span onclick="togglePw()" id="pw-toggle" style="position:absolute;right:11px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:13px;color:var(--text3);">👁️</span>
           </div>
         </div>
-        <div id="auth-forgot" class="auth-forgot" onclick="showResetModal()">Zapomenuté heslo?</div>
+        <div id="auth-forgot" class="auth-forgot" onclick="showResetModal()" data-i18n="auth_forgot">Zapomenuté heslo?</div>
         <div class="auth-error" id="auth-error"></div>
-        <button class="btn btn-primary" style="width:100%;justify-content:center;padding:13px;font-size:14.5px;" id="auth-submit-btn" onclick="authSubmit()">Přihlásit se →</button>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;padding:13px;font-size:14.5px;" id="auth-submit-btn" onclick="authSubmit()"><span data-i18n="auth_submit">Přihlásit se →</span></button>
 
       </div>
 
       <div class="auth-switch" id="auth-switch">
-        Ještě nemáš účet? <a onclick="switchAuthMode()">Zaregistruj se</a>
+        <span data-i18n="auth_no_acc">Ještě nemáš účet?</span> <a onclick="switchAuthMode()" data-i18n="auth_register">Zaregistruj se</a>
       </div>
       <div class="auth-terms">
         Registrací souhlasíš s <a href="#">Podmínkami</a> a <a href="#">Zásadami soukromí</a>.
@@ -354,25 +443,25 @@ select.input{cursor:pointer;}
     </div>
     <div class="sidebar-nav" id="sidebar-nav">
       <div class="nav-item active" onclick="showScreen('dashboard')" data-screen="dashboard">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>Dashboard
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg data-i18n="nav_dashboard">Dashboard
       </div>
       <div class="nav-item" onclick="showScreen('library')" data-screen="library">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>Moje knihy
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg data-i18n="nav_library">Moje knihy
       </div>
       <div class="nav-item" onclick="showScreen('wizard');resetWizard();" data-screen="wizard">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Nová kniha
       </div>
       <div class="nav-item" onclick="showScreen('templates')" data-screen="templates">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Šablony
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg data-i18n="nav_templates">Šablony
       </div>
       <div class="nav-item" onclick="showScreen('favorites')" data-screen="favorites">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>Oblíbené
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg data-i18n="nav_favorites">Oblíbené
       </div>
       <div class="nav-item" onclick="showScreen('translate-own')" data-screen="translate-own">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 5h12M9 3v2"/><path d="M5 7c0 5.523 4.477 10 10 10"/><path d="M7 9c0 3.866 2.686 7 6 7"/><path d="M15 17l3-3 3 3M18 20v-6"/></svg>Přeložit knihu
       </div>
       <div class="nav-item" onclick="showScreen('community')" data-screen="community">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Komunita
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg data-i18n="nav_community">Komunita
       </div>
       <div class="nav-section">Nedávno otevřené</div>
       <div id="nav-recent"></div>
@@ -396,10 +485,19 @@ select.input{cursor:pointer;}
     <!-- ── DASHBOARD ── -->
     <div class="screen active" id="screen-dashboard">
       <div class="topbar">
-        <div><h2 id="dash-greeting">Vítej zpět! 👋</h2><p>Co dnes vytvoříme?</p></div>
-        <button class="btn btn-primary" onclick="showScreen('wizard');resetWizard();">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>Nová kniha
+        <button class="mob-menu-btn" onclick="openSidebar()" aria-label="Menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
         </button>
+        <div style="flex:1"><h2 id="dash-greeting" data-i18n="dash_title">Vítej zpět! 👋</h2><p data-i18n="dash_sub">Co dnes vytvoříme?</p></div>
+        <div class="topbar-right">
+          <div class="lang-switch" id="lang-switch-topbar">
+            <button class="lang-btn active" id="lang-cs-btn" onclick="setLang('cs')">CS</button>
+            <button class="lang-btn" id="lang-en-btn" onclick="setLang('en')">EN</button>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="showScreen('wizard');resetWizard();">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>Nová kniha
+          </button>
+        </div>
       </div>
       <div class="content">
         <div class="action-grid">
@@ -480,9 +578,12 @@ select.input{cursor:pointer;}
     <!-- ── LIBRARY ── -->
     <div class="screen" id="screen-library">
       <div class="topbar">
-        <div><h2>Moje knihy</h2><p id="lib-count">0 knih</p></div>
-        <button class="btn btn-primary" onclick="showScreen('wizard');resetWizard();">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>Nová kniha
+        <button class="mob-menu-btn" onclick="openSidebar()" aria-label="Menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+        <div style="flex:1"><h2 data-i18n="lib_title">Moje knihy</h2><p id="lib-count">0 knih</p></div>
+        <button class="btn btn-primary btn-sm" onclick="showScreen('wizard');resetWizard();">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>Nová kniha
         </button>
       </div>
       <div class="content">
@@ -499,7 +600,10 @@ select.input{cursor:pointer;}
     <!-- ── FAVORITES ── -->
     <div class="screen" id="screen-favorites">
       <div class="topbar">
-        <div><h2>Oblíbené ❤️</h2><p id="fav-count"></p></div>
+        <button class="mob-menu-btn" onclick="openSidebar()" aria-label="Menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+        <div><h2 data-i18n="fav_title">Oblíbené ❤️</h2><p id="fav-count"></p></div>
       </div>
       <div class="content">
         <div class="lib-grid" id="fav-grid"></div>
@@ -515,7 +619,10 @@ select.input{cursor:pointer;}
     <!-- ── TRANSLATE OWN BOOK ── -->
     <div class="screen" id="screen-translate-own">
       <div class="topbar">
-        <div><h2>Přeložit knihu 🌍</h2><p>Nahraj TXT nebo PDF a AI ho přeloží do jiného jazyka</p></div>
+        <button class="mob-menu-btn" onclick="openSidebar()" aria-label="Menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+        <div style="flex:1"><h2>Přeložit knihu 🌍</h2><p>Nahraj TXT nebo PDF a AI ho přeloží do jiného jazyka</p></div>
       </div>
       <div class="content" style="max-width:620px;margin:0 auto;padding:32px 24px">
 
@@ -568,12 +675,8 @@ select.input{cursor:pointer;}
             <span style="font-size:12px;color:var(--text2)" id="own-trans-status">Překládám...</span>
             <span style="font-size:12px;color:var(--text2)" id="own-trans-pct">0%</span>
           </div>
-          <div style="background:var(--surface2);border-radius:99px;height:7px;overflow:hidden;margin-bottom:6px">
+          <div style="background:var(--surface2);border-radius:99px;height:7px;overflow:hidden">
             <div id="own-trans-bar" style="height:100%;background:linear-gradient(90deg,var(--purple),var(--purple2));border-radius:99px;width:0%;transition:width .4s"></div>
-          </div>
-          <div style="display:flex;justify-content:space-between">
-            <span style="font-size:11px;color:var(--text3)" id="own-trans-speed"></span>
-            <span style="font-size:11px;color:var(--text3)" id="own-trans-eta"></span>
           </div>
         </div>
 
@@ -591,12 +694,15 @@ select.input{cursor:pointer;}
     <!-- ── COMMUNITY ── -->
     <div class="screen" id="screen-community">
       <div class="topbar">
+        <button class="mob-menu-btn" onclick="openSidebar()" aria-label="Menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
         <div style="flex:1">
-          <h2>Komunita 👥</h2>
-          <p>Sdílej svou knihu a čti díla ostatních</p>
+          <h2 data-i18n="community_title">Komunita 👥</h2>
+          <p data-i18n="community_sub">Sdílej svou knihu a čti díla ostatních</p>
         </div>
         <button class="btn btn-primary btn-sm" onclick="openShareModal()" id="share-my-book-btn" style="display:none">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>Sdílet knihu
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg><span data-i18n="btn_share">Sdílet knihu</span>
         </button>
       </div>
 
@@ -764,7 +870,10 @@ select.input{cursor:pointer;}
 
     <!-- ── GENERATION ── -->
     <div class="screen" id="screen-generating">
-      <div class="topbar"><div><h2>Generuji knihu</h2><p>AI pracuje na tvém příběhu...</p></div></div>
+      <div class="topbar"><button class="mob-menu-btn" onclick="openSidebar()" aria-label="Menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+        <div><h2>Generuji knihu</h2><p>AI pracuje na tvém příběhu...</p></div></div>
       <div class="content">
         <div class="gen-wrap">
           <div style="font-size:52px;margin-bottom:14px">✍️</div>
@@ -781,6 +890,10 @@ select.input{cursor:pointer;}
     <!-- ── BOOK VIEW ── -->
     <div class="screen" id="screen-book">
       <div class="topbar" style="gap:10px">
+        <button class="mob-menu-btn" onclick="openSidebar()" aria-label="Menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+        
         <button class="btn btn-ghost btn-sm" onclick="showScreen('library')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>Zpět
         </button>
@@ -852,6 +965,7 @@ select.input{cursor:pointer;}
     </div>
 
   </div><!-- /main-panel -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
 </div><!-- /page-app -->
 
 </div><!-- /root -->
@@ -1495,7 +1609,7 @@ async function startTranslation(){
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        system:'Jsi zkušený literární překladatel. Přelož přesně do '+lang+'. Respektuj gramatický rod postav a přirozený literární styl. Odpověz pouze JSON bez markdown, bez vysvětlení.',
+        system:'Jsi profesionální překladatel. Přelož přesně do '+lang+'. Odpověz pouze JSON bez markdown.',
         prompt:'Přelož do '+lang+' tyto texty a vrať JSON: {"title":"...","subtitle":"...","annotation":"..."}\n\nTitle: '+book.title+'\nSubtitle: '+(book.subtitle||'')+'\nAnnotation: '+(book.annotation||''),
         max_tokens:500
       })
@@ -1521,7 +1635,7 @@ async function startTranslation(){
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
-          system:'Jsi zkušený literární překladatel s dokonalou znalostí '+lang+'. PRAVIDLA: 1) Respektuj gramatický rod postav (žena→ženský rod, muž→mužský rod). 2) Přídavná jména, slovesa a zájmena musí souhlasit v rodě a pádu. 3) Idiomy přelož přirozeným ekvivalentem. 4) Zachovej styl, atmosféru a strukturu. Přelož i název kapitoly. Odpověz pouze JSON bez markdown.',
+          system:'Jsi profesionální literární překladatel. Přelož text do '+lang+'. Zachovej styl, atmosféru a strukturu. Přelož i název kapitoly. Odpověz pouze JSON bez markdown.',
           prompt:'Přelož do '+lang+' a vrať JSON: {"title":"...","content":"..."}\n\nNázev: '+ch.title+'\n\nText:\n'+ch.content,
           max_tokens:4000
         })
@@ -2180,63 +2294,6 @@ function clearOwnFile() {
   document.getElementById('own-trans-error').style.display = 'none';
 }
 
-// Mapa jazyků: value → { name, nativeName, articles }
-const LANG_META = {
-  'češtinu':      { name:'češtinu', label:'Čeština', code:'cs' },
-  'slovenštinu':  { name:'slovenštinu', label:'Slovenština', code:'sk' },
-  'angličtinu':   { name:'angličtinu', label:'English', code:'en' },
-  'němčinu':      { name:'němčinu', label:'Deutsch', code:'de' },
-  'francouzštinu':{ name:'francouzštinu', label:'Français', code:'fr' },
-  'španělštinu':  { name:'španělštinu', label:'Español', code:'es' },
-  'italštinu':    { name:'italštinu', label:'Italiano', code:'it' },
-  'polštinu':     { name:'polštinu', label:'Polski', code:'pl' },
-};
-
-function buildTranslationSystemPrompt(lang) {
-  return `Jsi zkušený literární překladatel s dokonalou znalostí češtiny i ${lang}.
-
-ZÁVAZNÁ PRAVIDLA PŘEKLADU:
-1. Přelož text přesně do ${lang} — přirozený, plynný, literární styl.
-2. GRAMATICKÝ ROD: Respektuj rod hlavních postav — pokud je postava žena, používej ženský rod (přišla, udělala, byla), pokud muž, mužský rod (přišel, udělal, byl). Nikdy nezaměňuj rody.
-3. SHODA: Přídavná jména, slovesa a zájmena musí souhlasit v rodě, čísle a pádu s podstatnými jmény.
-4. PŘIROZENÝ JAZYK: Nepoužívej doslovné překlady. Idiomy a fráze přelož ekvivalentem v cílovém jazyce.
-5. Zachovej strukturu odstavců, dialogové uvozovky a formátování původního textu.
-6. Vrať POUZE přeložený text bez komentářů, vysvětlení nebo uvozovek.`;
-}
-
-async function translateChunk(chunk, lang, retries = 2) {
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      const resp = await fetch('/api/groq', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system: buildTranslationSystemPrompt(lang),
-          prompt: chunk,
-          max_tokens: 4000
-        })
-      });
-      if (!resp.ok) {
-        const t = await resp.text().catch(()=>'');
-        if (attempt < retries) { await new Promise(r=>setTimeout(r,1000)); continue; }
-        throw new Error('Server chyba ' + resp.status + (t.includes('<') ? ' (zkus to znovu)' : ': ' + t.slice(0,100)));
-      }
-      const data = await resp.json();
-      if (data.error) throw new Error(data.error);
-      return data.content?.[0]?.text || chunk;
-    } catch(e) {
-      if (attempt < retries) { await new Promise(r=>setTimeout(r,1000)); continue; }
-      throw e;
-    }
-  }
-}
-
-function formatEta(seconds) {
-  if (seconds < 60) return `~${Math.round(seconds)}s`;
-  const m = Math.floor(seconds/60), s = Math.round(seconds%60);
-  return `~${m}m ${s}s`;
-}
-
 async function startOwnTranslation() {
   if (!ownTransText.trim()) { toast('Nejprve nahraj soubor', 'error'); return; }
 
@@ -2247,8 +2304,6 @@ async function startOwnTranslation() {
   const pct = document.getElementById('own-trans-pct');
   const bar = document.getElementById('own-trans-bar');
   const errEl = document.getElementById('own-trans-error');
-  const etaEl = document.getElementById('own-trans-eta');
-  const speedEl = document.getElementById('own-trans-speed');
 
   // Check free limit
   if (!state.user?.isPro) {
@@ -2264,69 +2319,39 @@ async function startOwnTranslation() {
   startBtn.disabled = true;
   progress.style.display = 'block';
   errEl.style.display = 'none';
-  if(etaEl) etaEl.textContent = '';
-  if(speedEl) speedEl.textContent = '';
 
-  // Rozdělení na chunky ~3000 znaků (větší = méně volání = rychleji)
-  const CHUNK = 3000;
-  const PARALLEL = 3; // paralelní překlad
+  // Rozdělení na chunky ~2000 znaků
+  const CHUNK = 2000;
   const chunks = [];
-  // Rozděl na odstavcové hranice aby text nebyl rozříznut uprostřed věty
-  const paragraphs = ownTransText.split(/\n\n+/);
-  let current = '';
-  for (const p of paragraphs) {
-    if (current.length + p.length > CHUNK && current.length > 0) {
-      chunks.push(current.trim());
-      current = p;
-    } else {
-      current += (current ? '\n\n' : '') + p;
-    }
+  for (let i = 0; i < ownTransText.length; i += CHUNK) {
+    chunks.push(ownTransText.slice(i, i + CHUNK));
   }
-  if (current.trim()) chunks.push(current.trim());
 
-  const translated = new Array(chunks.length);
-  const startTime = Date.now();
-  let doneCount = 0;
-  let lastDoneCount = 0;
-  let lastTickTime = Date.now();
-  let estRemaining = null;
-
-  // Interval aktualizuje čas a rychlost každou sekundu nezávisle
-  const timerInterval = setInterval(() => {
-    const elapsed = (Date.now() - startTime) / 1000;
-    const tickNow = Date.now();
-    const tickElapsed = (tickNow - lastTickTime) / 1000;
-    const newDone = doneCount - lastDoneCount;
-    lastDoneCount = doneCount;
-    lastTickTime = tickNow;
-
-    if (doneCount > 0) {
-      const rate = doneCount / elapsed;
-      const remaining = (chunks.length - doneCount) / rate;
-      estRemaining = remaining;
-      const charsPerSec = Math.round((newDone * CHUNK) / Math.max(tickElapsed, 0.1));
-      if(etaEl) etaEl.textContent = 'Zbývá: ' + formatEta(remaining);
-      if(speedEl) speedEl.textContent = (charsPerSec > 0 ? charsPerSec : Math.round(rate * CHUNK)) + ' znaků/s';
-    } else {
-      if(etaEl) etaEl.textContent = 'Počítám...';
-    }
-  }, 1000);
-
+  const translated = [];
   try {
-    // Zpracuj po dávkách PARALLEL chunků najednou
-    for (let i = 0; i < chunks.length; i += PARALLEL) {
-      const batch = chunks.slice(i, i + PARALLEL);
-      const batchPromises = batch.map((chunk, bi) =>
-        translateChunk(chunk, lang).then(result => {
-          translated[i + bi] = result;
-          doneCount++;
-          const p = Math.round((doneCount / chunks.length) * 100);
-          status.textContent = `Překládám část ${doneCount} z ${chunks.length}...`;
-          pct.textContent = p + '%';
-          bar.style.width = p + '%';
+    for (let i = 0; i < chunks.length; i++) {
+      const p = Math.round(((i+1)/chunks.length)*100);
+      status.textContent = `Překládám část ${i+1} z ${chunks.length}...`;
+      pct.textContent = p + '%';
+      bar.style.width = p + '%';
+
+      const resp = await fetch('/api/claude', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system: 'Jsi profesionální literární překladatel. Přelož přesně do ' + lang + '. Zachovej formátování, odstavce a styl. Vrať POUZE přeložený text bez komentářů.',
+          prompt: chunks[i],
+          max_tokens: 4000
         })
-      );
-      await Promise.all(batchPromises);
+      });
+      if (!resp.ok) {
+        const errText = await resp.text().catch(()=>'');
+        throw new Error('Server chyba ' + resp.status + (errText.includes('<') ? ' (zkus to znovu)' : ': ' + errText.slice(0,120)));
+      }
+      const data = await resp.json();
+      if (data.error) throw new Error(data.error);
+      const text = data.content?.[0]?.text || chunks[i];
+      translated.push(text);
     }
 
     // Increment translation count
@@ -2334,61 +2359,25 @@ async function startOwnTranslation() {
       try { await apiFetch('/api/auth/update-translations', { method:'POST', body:'{}' }); } catch(e) {}
     }
 
-    const result = translated.join('\n\n');
+    // Download result
+    const result = translated.join('\n');
     const baseName = ownTransFile ? ownTransFile.name.replace(/\.[^.]+$/, '') : 'preklad';
-    const langLabel = LANG_META[lang]?.label || lang;
-    const bookTitle = baseName + ' — ' + langLabel;
-
-    // ── Uložit do knihovny jako knihu ──
-    if (authToken && state.user) {
-      try {
-        const fakeBook = {
-          id: Date.now(),
-          title: bookTitle,
-          genre: ['other'],
-          style: 'přeložená kniha',
-          theme: 'Přeloženo z ' + baseName,
-          setting: '',
-          characters: [],
-          bible: '',
-          subtitle: 'Přeloženo do: ' + langLabel,
-          annotation: 'Tato kniha byla přeložena pomocí StoryForge AI z externího souboru.',
-          createdAt: new Date().toISOString(),
-          wordCount: result.split(/\s+/).length,
-          chapters: [{ number: 1, title: bookTitle, content: result }],
-          isTranslated: true,
-          translatedFrom: baseName,
-          translatedTo: langLabel,
-        };
-        const saved = await apiFetch('/api/books', { method:'POST', body: JSON.stringify({ book: fakeBook }) });
-        if (saved?.book?.id) fakeBook.id = saved.book.id;
-        state.books.push(fakeBook);
-        renderBookGrid();
-        toast('✅ Překlad uložen do knihovny!', 'ok');
-      } catch(e) {
-        console.warn('Uložení do knihovny selhalo:', e.message);
-      }
-    }
-
-    // Download TXT
     const blob = new Blob([result], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = baseName + '_' + langLabel + '.txt';
+    a.href = url; a.download = baseName + '_' + lang + '.txt';
     document.body.appendChild(a); a.click();
     document.body.removeChild(a); URL.revokeObjectURL(url);
 
-    clearInterval(timerInterval);
     status.textContent = '✅ Překlad dokončen!';
     pct.textContent = '100%';
     bar.style.width = '100%';
-    if(etaEl) etaEl.textContent = 'Hotovo za ' + formatEta((Date.now()-startTime)/1000);
-    if(speedEl) speedEl.textContent = '';
+    toast('Překlad dokončen a stažen! 🌍', 'ok');
 
+    // Refresh limit info
     initTranslateOwnScreen();
 
   } catch(e) {
-    clearInterval(timerInterval);
     errEl.style.display = 'block';
     errEl.textContent = 'Chyba překladu: ' + e.message;
   }
@@ -2857,7 +2846,104 @@ renderGenreGrid();renderLengthOpts();renderStyleGrid();renderChars();
 console.log('%c⚡ StoryForge Admin%c  —  zadej sf.help() pro seznam příkazů','background:#7c3aed;color:#fff;padding:3px 8px;border-radius:4px;font-weight:bold','color:#94a3b8');
 
 // Spustíme po načtení DOMu
+
+// ══════════════════════════════════════════════════════════
+// MOBILNÍ SIDEBAR
+// ══════════════════════════════════════════════════════════
+function openSidebar(){
+  document.querySelector('.sidebar')?.classList.add('open');
+  document.getElementById('sidebar-overlay')?.classList.add('show');
+  document.body.style.overflow='hidden';
+}
+function closeSidebar(){
+  document.querySelector('.sidebar')?.classList.remove('open');
+  document.getElementById('sidebar-overlay')?.classList.remove('show');
+  document.body.style.overflow='';
+}
+// Zavřít sidebar po kliknutí na nav-item na mobilu
+document.addEventListener('click', e => {
+  if(window.innerWidth<=768 && e.target.closest('.nav-item')){
+    closeSidebar();
+  }
+});
+
+// ══════════════════════════════════════════════════════════
+// PŘEPÍNAČ JAZYKA EN / CS
+// ══════════════════════════════════════════════════════════
+const TRANSLATIONS = {
+  cs: {
+    'nav_dashboard':'Dashboard','nav_library':'Moje knihy','nav_new':'Nová kniha',
+    'nav_templates':'Šablony','nav_favorites':'Oblíbené','nav_translate':'Přeložit knihu',
+    'nav_community':'Komunita',
+    'dash_title':'Vítej zpět! 👋','dash_sub':'Co dnes vytvoříme?',
+    'btn_new_book':'Nová kniha','btn_start':'Začít psát ✨','btn_create':'Vytvořit knihu',
+    'lib_title':'Moje knihy','fav_title':'Oblíbené ❤️',
+    'community_title':'Komunita 👥','community_sub':'Sdílej svou knihu a čti díla ostatních',
+    'btn_share':'Sdílet knihu',
+    'auth_title':'Vítej zpět 👋','auth_sub':'Přihlas se a pokračuj ve svém příběhu',
+    'auth_google':'Pokračovat s Google','auth_email_div':'nebo e-mailem',
+    'auth_email':'E-mailová adresa','auth_password':'Heslo','auth_submit':'Přihlásit se →',
+    'auth_no_acc':'Ještě nemáš účet?','auth_register':'Zaregistruj se',
+    'auth_forgot':'Zapomenuté heslo?',
+    'hero_title':'Každý má <em style="color:var(--purple3)">příběh</em>,<br/>který stojí za vyprávění.',
+    'hero_sub':'AI platforma, která promění tvůj nápad v kompletní román. Žádné psaní — stačí představivost.',
+  },
+  en: {
+    'nav_dashboard':'Dashboard','nav_library':'My Books','nav_new':'New Book',
+    'nav_templates':'Templates','nav_favorites':'Favorites','nav_translate':'Translate Book',
+    'nav_community':'Community',
+    'dash_title':'Welcome back! 👋','dash_sub':'What are we creating today?',
+    'btn_new_book':'New Book','btn_start':'Start Writing ✨','btn_create':'Create Book',
+    'lib_title':'My Books','fav_title':'Favorites ❤️',
+    'community_title':'Community 👥','community_sub':'Share your book and read others\' stories',
+    'btn_share':'Share Book',
+    'auth_title':'Welcome back 👋','auth_sub':'Sign in and continue your story',
+    'auth_google':'Continue with Google','auth_email_div':'or with email',
+    'auth_email':'Email address','auth_password':'Password','auth_submit':'Sign in →',
+    'auth_no_acc':'Don\'t have an account?','auth_register':'Sign up',
+    'auth_forgot':'Forgot password?',
+    'hero_title':'Everyone has a <em style="color:var(--purple3)">story</em><br/>worth telling.',
+    'hero_sub':'AI platform that turns your idea into a complete novel. No writing needed — just imagination.',
+  }
+};
+
+let currentLang = localStorage.getItem('sf_lang') || 'cs';
+
+function setLang(lang) {
+  currentLang = lang;
+  localStorage.setItem('sf_lang', lang);
+  // Update lang buttons
+  document.querySelectorAll('.lang-btn').forEach(b => {
+    const isActive = b.id === 'lang-'+lang+'-btn' || b.id === 'lang-'+lang+'-btn-auth';
+    b.classList.toggle('active', isActive);
+  });
+  applyTranslations();
+}
+
+function applyTranslations() {
+  const t = TRANSLATIONS[currentLang];
+  if (!t) return;
+  // Nav items
+  const setTxt = (id, key) => { const el=document.getElementById(id); if(el && t[key]) el.textContent=t[key]; };
+  const setHTML = (id, key) => { const el=document.getElementById(id); if(el && t[key]) el.innerHTML=t[key]; };
+  // Aplikovat překlady na elementy s data-i18n atributem
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (t[key]) {
+      if (el.getAttribute('data-i18n-html')) el.innerHTML = t[key];
+      else el.textContent = t[key];
+    }
+  });
+}
+
 window.addEventListener('DOMContentLoaded', async () => {
+  // Init lang buttons
+  document.querySelectorAll('.lang-btn').forEach(b => {
+    const isActive = b.id === 'lang-'+currentLang+'-btn' || b.id === 'lang-'+currentLang+'-btn-auth';
+    b.classList.toggle('active', isActive);
+  });
+  setLang(currentLang);
+
   loadIdeasFromStorage();
   renderIdeas();
   const resetToken = new URLSearchParams(window.location.search).get('reset');
