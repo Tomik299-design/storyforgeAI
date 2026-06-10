@@ -443,25 +443,25 @@ select.input{cursor:pointer;}
     </div>
     <div class="sidebar-nav" id="sidebar-nav">
       <div class="nav-item active" onclick="showScreen('dashboard')" data-screen="dashboard">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg data-i18n="nav_dashboard">Dashboard
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>Dashboard
       </div>
       <div class="nav-item" onclick="showScreen('library')" data-screen="library">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg data-i18n="nav_library">Moje knihy
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>Moje knihy
       </div>
       <div class="nav-item" onclick="showScreen('wizard');resetWizard();" data-screen="wizard">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Nová kniha
       </div>
       <div class="nav-item" onclick="showScreen('templates')" data-screen="templates">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg data-i18n="nav_templates">Šablony
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Šablony
       </div>
       <div class="nav-item" onclick="showScreen('favorites')" data-screen="favorites">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg data-i18n="nav_favorites">Oblíbené
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>Oblíbené
       </div>
       <div class="nav-item" onclick="showScreen('translate-own')" data-screen="translate-own">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 5h12M9 3v2"/><path d="M5 7c0 5.523 4.477 10 10 10"/><path d="M7 9c0 3.866 2.686 7 6 7"/><path d="M15 17l3-3 3 3M18 20v-6"/></svg>Přeložit knihu
       </div>
       <div class="nav-item" onclick="showScreen('community')" data-screen="community">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg data-i18n="nav_community">Komunita
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Komunita
       </div>
       <div class="nav-section">Nedávno otevřené</div>
       <div id="nav-recent"></div>
@@ -2868,72 +2868,130 @@ document.addEventListener('click', e => {
 });
 
 // ══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 // PŘEPÍNAČ JAZYKA EN / CS
 // ══════════════════════════════════════════════════════════
-const TRANSLATIONS = {
-  cs: {
-    'nav_dashboard':'Dashboard','nav_library':'Moje knihy','nav_new':'Nová kniha',
-    'nav_templates':'Šablony','nav_favorites':'Oblíbené','nav_translate':'Přeložit knihu',
-    'nav_community':'Komunita',
-    'dash_title':'Vítej zpět! 👋','dash_sub':'Co dnes vytvoříme?',
-    'btn_new_book':'Nová kniha','btn_start':'Začít psát ✨','btn_create':'Vytvořit knihu',
-    'lib_title':'Moje knihy','fav_title':'Oblíbené ❤️',
-    'community_title':'Komunita 👥','community_sub':'Sdílej svou knihu a čti díla ostatních',
-    'btn_share':'Sdílet knihu',
-    'auth_title':'Vítej zpět 👋','auth_sub':'Přihlas se a pokračuj ve svém příběhu',
-    'auth_google':'Pokračovat s Google','auth_email_div':'nebo e-mailem',
-    'auth_email':'E-mailová adresa','auth_password':'Heslo','auth_submit':'Přihlásit se →',
-    'auth_no_acc':'Ještě nemáš účet?','auth_register':'Zaregistruj se',
-    'auth_forgot':'Zapomenuté heslo?',
-    'hero_title':'Každý má <em style="color:var(--purple3)">příběh</em>,<br/>který stojí za vyprávění.',
-    'hero_sub':'AI platforma, která promění tvůj nápad v kompletní román. Žádné psaní — stačí představivost.',
-  },
-  en: {
-    'nav_dashboard':'Dashboard','nav_library':'My Books','nav_new':'New Book',
-    'nav_templates':'Templates','nav_favorites':'Favorites','nav_translate':'Translate Book',
-    'nav_community':'Community',
-    'dash_title':'Welcome back! 👋','dash_sub':'What are we creating today?',
-    'btn_new_book':'New Book','btn_start':'Start Writing ✨','btn_create':'Create Book',
-    'lib_title':'My Books','fav_title':'Favorites ❤️',
-    'community_title':'Community 👥','community_sub':'Share your book and read others\' stories',
-    'btn_share':'Share Book',
-    'auth_title':'Welcome back 👋','auth_sub':'Sign in and continue your story',
-    'auth_google':'Continue with Google','auth_email_div':'or with email',
-    'auth_email':'Email address','auth_password':'Password','auth_submit':'Sign in →',
-    'auth_no_acc':'Don\'t have an account?','auth_register':'Sign up',
-    'auth_forgot':'Forgot password?',
-    'hero_title':'Everyone has a <em style="color:var(--purple3)">story</em><br/>worth telling.',
-    'hero_sub':'AI platform that turns your idea into a complete novel. No writing needed — just imagination.',
-  }
-};
-
 let currentLang = localStorage.getItem('sf_lang') || 'cs';
+
+const CS_TO_EN = {
+  'Dashboard':'Dashboard','Moje knihy':'My Books','Nová kniha':'New Book',
+  'Šablony':'Templates','Oblíbené':'Favorites','Přeložit knihu':'Translate Book',
+  'Komunita':'Community','NEDÁVNO OTEVŘENÉ':'RECENTLY OPENED',
+  'Vítej zpět! 👋':'Welcome back! 👋','Co dnes vytvoříme?':'What are we creating today?',
+  'Oblíbené ❤️':'Favorites ❤️','Komunita 👥':'Community 👥',
+  'Sdílej svou knihu a čti díla ostatních':"Share your book and read others\' stories",
+  'Sdílet knihu':'Share Book','Sdílet →':'Share →',
+  'Přeložit knihu 🌍':'Translate Book 🌍',
+  'Nahraj TXT nebo PDF a AI ho přeloží do jiného jazyka':'Upload a TXT or PDF and AI will translate it',
+  'Šablony 📋':'Templates 📋','Vyberte šablonu a začněte psát':'Choose a template and start writing',
+  'Nová kniha ✨':'New Book ✨','Generuji knihu':'Generating Book',
+  'AI pracuje na tvém příběhu...':'AI is working on your story...',
+  'Odhlásit se':'Sign out','Upgradovat na PRO ⚡':'Upgrade to PRO ⚡',
+  'Odemkni neomezené knihy a PRO funkce.':'Unlock unlimited books and PRO features.',
+  'Přejít na PRO →':'Go PRO →',
+  'Vytvoř novou knihu':'Create New Book',
+  'Nech AI vygenerovat jedinečný příběh podle tvých představ.':'Let AI generate a unique story based on your ideas.',
+  'Začít psát ✨':'Start Writing ✨','Pokračuj v psaní':'Continue Writing',
+  'Otevři rozepsanou knihu a pokračuj tam, kde jsi skončil/a.':'Open an unfinished book and continue where you left off.',
+  'Otevřít knihovnu':'Open Library','Přelož knihu':'Translate Book',
+  'Nahraj vlastní text nebo knihu a přelož ji do jiného jazyka.':'Upload your own text or book and translate it.',
+  'Přeložit →':'Translate →','Vygenerovat nápad 🎲':'Generate Idea 🎲',
+  'Tvoje knihy':'Your Books','Statistiky':'Statistics',
+  'Celkem knih':'Total Books','Slov napsáno':'Words Written',
+  'Citát dne':'Quote of the Day','Inspirace':'Inspiration',
+  'Knihovna je prázdná':'Library is empty',
+  'Vytvoř svoji první knihu a začni svůj příběh':'Create your first book and start your story',
+  '✨ Vytvořit knihu':'✨ Create Book',
+  'Žádné oblíbené':'No favorites yet',
+  'Klikni na ❤️ u knihy a přidej ji sem':'Click ❤️ on a book to add it here',
+  'Zobrazit knihy':'Show Books',
+  'ověřené uživatele':'verified users',
+  'Pro ověření kontaktuj administrátora.':'Contact an administrator for verification.',
+  'Nové příspěvky':'Latest Posts','Nejoblíbenější':'Most Popular','Moje sdílené':'My Shared',
+  'Načítám příspěvky...':'Loading posts...','Komunita je zatím prázdná.':'Community is empty.',
+  'Buď první, kdo sdílí svou knihu!':'Be the first to share your book!',
+  'Přetáhni soubor sem nebo klikni pro výběr':'Drag a file here or click to select',
+  'Podporované formáty: TXT, PDF (max 5 MB)':'Supported formats: TXT, PDF (max 5 MB)',
+  'Přeložit do jazyka':'Translate to language',
+  'Překládám...':'Translating...','Přeložit a stáhnout':'Translate & Download',
+  'Přeložený soubor se automaticky stáhne jako TXT':'Translated file will download as TXT',
+  'Vyberte šablonu pro rychlý start':'Choose a template for a quick start',
+  'Použít šablonu':'Use Template',
+  'Vyber žánr':'Choose Genre',
+  'Kombinuj až 2 žánry pro unikátní mix.':'Combine up to 2 genres for a unique mix.',
+  'Zadej detaily':'Enter Details','Postavy':'Characters',
+  'Přidat postavu':'Add Character','Délka knihy':'Book Length',
+  'Styl psaní':'Writing Style','Vygenerovat knihu':'Generate Book',
+  'Zpět':'Back','Pokračovat':'Continue',
+  'Název knihy':'Book Title','Téma / o čem kniha je':'Theme / what the book is about',
+  'Prostředí a svět':'Setting and World',
+  'Tvorba světa':'World Building','Osnova':'Outline','Kapitoly':'Chapters',
+  'Kontrola':'Review','Finalizace':'Finalization',
+  'Číst':'Read','Přeložit':'Translate','Chat s AI':'AI Chat',
+  'Exportovat':'Export','Stáhnout jako TXT':'Download as TXT',
+  'Stáhnout jako HTML':'Download as HTML',
+  'Odemkni plný potenciál':'Unlock Full Potential',
+  'měsíčně':'monthly','Aktuální plán':'Current Plan',
+  'Upgradovat':'Upgrade','Zrušit':'Cancel',
+  'Vítej zpět 👋':'Welcome back 👋',
+  'Přihlas se a pokračuj ve svém příběhu':'Sign in and continue your story',
+  'Pokračovat s Google':'Continue with Google','nebo e-mailem':'or with email',
+  'E-mailová adresa':'Email address','Celé jméno':'Full name','Heslo':'Password',
+  'Zapomenuté heslo?':'Forgot password?','Přihlásit se →':'Sign in →',
+  'Zaregistrovat se →':'Sign up →',
+  'Ještě nemáš účet?':"Don\'t have an account?",'Zaregistruj se':'Sign up',
+  'Už máš účet?':'Already have an account?','Přihlas se':'Sign in',
+  'AI platforma, která promění tvůj nápad v kompletní román. Žádné psaní — stačí představivost.':'AI platform that turns your idea into a complete novel. No writing needed — just imagination.',
+  'Kompletní knihy generované AI v minutách':'Complete AI-generated books in minutes',
+  'Konzistentní postavy a světy přes celý román':'Consistent characters and worlds throughout the novel',
+  'AI spisovatel asistent pro úpravy a rozšíření':'AI writing assistant for edits and expansion',
+  'Export do TXT, HTML a dalších formátů':'Export to TXT, HTML and other formats',
+  'Obnovení hesla':'Password Reset',
+  "Zadej svůj e-mail a pošleme ti odkaz pro obnovení hesla.":"Enter your email and we\'ll send you a password reset link.",
+  'Odeslat odkaz':'Send Link','Nové heslo':'New Password',
+  'Potvrdit heslo':'Confirm Password','Uložit heslo':'Save Password',
+  'Sdílet knihu s komunitou':'Share Book with Community',
+  'Vyber knihu ke sdílení':'Select book to share',
+  'Vzkaz pro komunitu (volitelné)':'Message for community (optional)',
+};
+const EN_TO_CS = Object.fromEntries(Object.entries(CS_TO_EN).map(([k,v])=>[v,k]).filter(([k,v])=>k!==v));
+
+function translateDOM(map) {
+  const skip = new Set(['SCRIPT','STYLE','NOSCRIPT','CODE','PRE']);
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+    acceptNode: n => {
+      if (!n.parentElement || skip.has(n.parentElement.tagName)) return NodeFilter.FILTER_REJECT;
+      if (!n.textContent.trim()) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+  const nodes = [];
+  while(walker.nextNode()) nodes.push(walker.currentNode);
+  for(const node of nodes){
+    const t = node.textContent.trim();
+    if(map[t]) node.textContent = node.textContent.replace(t, map[t]);
+  }
+  document.querySelectorAll('[placeholder]').forEach(el=>{
+    const p=el.getAttribute('placeholder'); if(map[p]) el.setAttribute('placeholder',map[p]);
+  });
+}
 
 function setLang(lang) {
   currentLang = lang;
   localStorage.setItem('sf_lang', lang);
-  // Update lang buttons
-  document.querySelectorAll('.lang-btn').forEach(b => {
-    const isActive = b.id === 'lang-'+lang+'-btn' || b.id === 'lang-'+lang+'-btn-auth';
-    b.classList.toggle('active', isActive);
+  document.querySelectorAll('.lang-btn').forEach(b=>{
+    b.classList.toggle('active', b.id==='lang-'+lang+'-btn' || b.id==='lang-'+lang+'-btn-auth');
   });
-  applyTranslations();
-}
-
-function applyTranslations() {
-  const t = TRANSLATIONS[currentLang];
-  if (!t) return;
-  // Nav items
-  const setTxt = (id, key) => { const el=document.getElementById(id); if(el && t[key]) el.textContent=t[key]; };
-  const setHTML = (id, key) => { const el=document.getElementById(id); if(el && t[key]) el.innerHTML=t[key]; };
-  // Aplikovat překlady na elementy s data-i18n atributem
-  document.querySelectorAll('[data-i18n]').forEach(el => {
-    const key = el.getAttribute('data-i18n');
-    if (t[key]) {
-      if (el.getAttribute('data-i18n-html')) el.innerHTML = t[key];
-      else el.textContent = t[key];
-    }
-  });
+  if(lang==='en'){
+    translateDOM(CS_TO_EN);
+    const hero=document.querySelector('.auth-hero-title');
+    if(hero) hero.innerHTML='Everyone has a <em style="color:var(--purple3)">story</em><br/>worth telling.';
+  } else {
+    translateDOM(EN_TO_CS);
+    const hero=document.querySelector('.auth-hero-title');
+    if(hero) hero.innerHTML='Každý má <em style="color:var(--purple3)">příběh</em>,<br/>který stojí za vyprávění.';
+  }
+  document.documentElement.lang = lang==='en'?'en':'cs';
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
